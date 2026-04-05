@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Album de Viaje Compartido</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+  <header>
+    <div class="header-inner">
+      <div class="header-title">
+        <span class="header-icon">&#9992;</span>
+        <div>
+          <h1>Album de Viaje</h1>
+          <p>Compartimos los mejores momentos</p>
+        </div>
+      </div>
+      <span id="photo-count" class="photo-count"></span>
+    </div>
+  </header>
+
+  <main>
+    <!-- Upload Form -->
+    <section class="upload-section">
+      <h2>Subir una foto</h2>
+      <form id="upload-form" novalidate>
+        <div class="form-row">
+          <div class="form-group">
+            <label for="uploader">Tu nombre</label>
+            <input
+              type="text"
+              id="uploader"
+              name="uploader"
+              placeholder="Ej: Maria, Juan..."
+              maxlength="60"
+              required
+            />
+          </div>
+          <div class="form-group">
+            <label for="caption">Descripcion (opcional)</label>
+            <input
+              type="text"
+              id="caption"
+              name="caption"
+              placeholder="Ej: Atardecer en la playa..."
+              maxlength="200"
+            />
+          </div>
+        </div>
+
+        <div class="form-group file-group">
+          <label for="photo" class="file-label">
+            <span id="file-label-text">Elegir imagen (JPG, PNG, GIF, WEBP &mdash; max 10 MB)</span>
+            <input
+              type="file"
+              id="photo"
+              name="photo"
+              accept="image/jpeg,image/png,image/gif,image/webp"
+              required
+            />
+          </label>
+          <div id="preview-wrap" class="preview-wrap hidden">
+            <img id="preview-img" src="" alt="Vista previa" />
+            <button type="button" id="clear-file" class="clear-file" title="Quitar imagen">&times;</button>
+          </div>
+        </div>
+
+        <div id="upload-error" class="error-msg hidden"></div>
+
+        <button type="submit" id="submit-btn">
+          <span id="submit-text">Subir foto</span>
+          <span id="submit-spinner" class="spinner hidden"></span>
+        </button>
+      </form>
+    </section>
+
+    <!-- Gallery -->
+    <section class="gallery-section">
+      <div class="gallery-header">
+        <h2>Galeria del viaje</h2>
+      </div>
+      <div id="gallery-loading" class="loading">Cargando fotos...</div>
+      <div id="gallery-empty" class="empty-state hidden">
+        <span class="empty-icon">&#128247;</span>
+        <p>Todavia no hay fotos. &iexcl;Se el primero en subir una!</p>
+      </div>
+      <div id="gallery" class="gallery"></div>
+    </section>
+  </main>
+
+  <!-- Lightbox -->
+  <dialog id="lightbox" class="lightbox">
+    <button id="lightbox-close" class="lightbox-close" title="Cerrar">&times;</button>
+    <img id="lightbox-img" src="" alt="" />
+    <div id="lightbox-caption" class="lightbox-caption"></div>
+  </dialog>
+
+  <script src="app.js"></script>
+</body>
+</html>
