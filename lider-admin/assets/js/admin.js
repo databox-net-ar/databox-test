@@ -4,6 +4,7 @@ const UPLOAD_API = 'api/upload.php';
 const CAT_API = 'api/categorias.php';
 const PED_API = 'api/pedidos.php';
 const CFG_API = 'api/configuracion.php';
+const CLI_API = 'api/clientes.php';
 
 let CATEGORIAS = [];
 
@@ -349,6 +350,10 @@ function cambiarSeccion(seccion, navEl) {
     document.getElementById('seccionConfig').style.display = '';
     topbar.textContent = 'Configuración';
     cargarConfiguracion();
+  } else if (seccion === 'clientes') {
+    document.getElementById('seccionClientes').style.display = '';
+    topbar.textContent = 'Gestión de Clientes';
+    cargarClientes();
   }
 }
 
@@ -664,6 +669,79 @@ async function eliminarPedido() {
         cerrarPedModal();
         showToast('Pedido ' + num + ' eliminado');
         cargarPedidos();
+      } else {
+        showToast(data.error || 'Error al eliminar', true);
+      }
+    } catch (e) {
+      showToast('Error de conexión', true);
+    }
+  };
+  document.getElementById('confirmBackdrop').classList.add('open');
+}
+
+/* ===== Clientes ===== */
+var clientes = [];
+var cliSearchTimer = null;
+var filtroBusqCliente = '';
+
+function onSearchCliente(val) {
+  clearTimeout(cliSearchTimer);
+  cliSearchTimer = setTimeout(function() { filtroBusqCliente = val; cargarClientes(); }, 300);
+}
+
+async function cargarClientes() {
+  try {
+    var url = CLI_API + '?q=' + encodeURIComponent(filtroBusqCliente);
+    var res = await fetch(url);
+    var data = await res.json();
+    if (data.ok) {
+      clientes = data.data || [];
+      renderClientes();
+      if (data.stats) {
+        document.getElementById('cliStatTotal').textContent = data.stats.total;
+        document.getElementById('cliStatConPedidos').textContent = data.stats.con_pedidos;
+      }
+    } else {
+      showToast(data.error || 'Error al cargar clientes', true);
+    }
+  } catch (e) {
+    showToast('Error de conexión', true);
+  }
+}
+
+function renderClientes() {
+  var lista = document.getElementById('clientesLista');
+  if (!clientes.length) {
+    lista.innerHTML = '<div class="table-empty">No hay clientes registrados</div>';
+    return;
+  }
+  lista.innerHTML = '<table class="table"><thead><tr>' +
+    '<th>Nombre</th><th>Teléfono</th><th>Dirección</th><th>Pedidos</th><th>Total gastado</th><th>Último pedido</th><th></th>' +
+    '</tr></thead><tbody>' +
+    clientes.map(function(c) {
+      var ultimo = c.ultimo_pedido ? new Date(c.ultimo_pedido).toLocaleDateString('es-AR') : '—';
+      return '<tr>' +
+        '<td><strong>' + esc(c.nombre) + '</strong></td>' +
+        '<td>' + esc(c.telefono || '—') + '</td>' +
+        '<td>' + esc(c.direccion ? (c.direccion.length > 35 ? c.direccion.substring(0,35) + '...' : c.direccion) : '—') + '</td>' +
+        '<td style="text-align:center">' + c.total_pedidos + '</td>' +
+        '<td>$' + Number(c.total_gastado).toLocaleString('es-AR') + '</td>' +
+        '<td>' + ultimo + '</td>' +
+        '<td><button class="btn btn-ghost btn-sm" onclick="eliminarCliente(' + c.id + ',\'' + esc(c.nombre).replace(/'/g, "\\'") + '\')">🗑️</button></td>' +
+        '</tr>';
+    }).join('') +
+    '</tbody></table>';
+}
+
+function eliminarCliente(id, nombre) {
+  document.getElementById('confirmMsg').textContent = '¿Eliminás el cliente "' + nombre + '"? Sus pedidos no se eliminarán.';
+  confirmCallback = async function() {
+    try {
+      var res = await fetch(CLI_API + '?id=' + id, { method: 'DELETE' });
+      var data = await res.json();
+      if (data.ok) {
+        showToast('Cliente eliminado');
+        cargarClientes();
       } else {
         showToast(data.error || 'Error al eliminar', true);
       }

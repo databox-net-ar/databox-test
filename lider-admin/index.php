@@ -26,6 +26,9 @@
       <a class="nav-item" href="#" onclick="cambiarSeccion('pedidos', this)" data-section="pedidos">
         <span class="nav-icon">📋</span> Pedidos
       </a>
+      <a class="nav-item" href="#" onclick="cambiarSeccion('clientes', this)" data-section="clientes">
+        <span class="nav-icon">👥</span> Clientes
+      </a>
       <a class="nav-item" href="#" onclick="cambiarSeccion('config', this)" data-section="config">
         <span class="nav-icon">⚙️</span> Configuración
       </a>
@@ -239,6 +242,38 @@
         </div>
 
       </div><!-- /seccionConfig -->
+
+      <!-- ===== Sección Clientes ===== -->
+      <div class="section" id="seccionClientes" style="display:none">
+
+        <!-- Stats clientes -->
+        <div class="stats-bar">
+          <div class="stat-card">
+            <span class="stat-label">Total clientes</span>
+            <span class="stat-value orange" id="cliStatTotal">—</span>
+          </div>
+          <div class="stat-card">
+            <span class="stat-label">Con pedidos</span>
+            <span class="stat-value green" id="cliStatConPedidos">—</span>
+          </div>
+        </div>
+
+        <!-- Toolbar clientes -->
+        <div class="toolbar">
+          <div class="toolbar-left">
+            <input class="search-input" type="text" placeholder="🔍 Buscar cliente..." oninput="onSearchCliente(this.value)">
+          </div>
+          <div class="toolbar-right">
+            <button class="btn btn-ghost" onclick="cargarClientes()">🔄 Actualizar</button>
+          </div>
+        </div>
+
+        <!-- Lista de clientes -->
+        <div id="clientesLista">
+          <div class="spinner-row" style="text-align:center;padding:40px"><div class="spin"></div></div>
+        </div>
+
+      </div><!-- /seccionClientes -->
 
     </div><!-- /content -->
   </div><!-- /main -->
