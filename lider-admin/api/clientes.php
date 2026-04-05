@@ -1,4 +1,18 @@
 <?php
+/**
+ * API admin — Clientes (CRUD)
+ *
+ * GET    /lider-admin/api/clientes.php[?q={texto}]
+ *   Lista clientes con conteo de pedidos y monto total gastado.
+ *   Soporta búsqueda libre por nombre, teléfono o dirección.
+ *   Incluye stats globales: total de clientes y cuántos tienen al menos un pedido.
+ *
+ * PUT    /lider-admin/api/clientes.php
+ *   Actualiza datos de un cliente. Body JSON: { id, nombre?, telefono?, direccion? }
+ *
+ * DELETE /lider-admin/api/clientes.php?id={id}
+ *   Elimina un cliente. Desvincula sus pedidos (cliente_id → NULL) antes de borrar.
+ */
 ini_set('display_errors', 1);
 error_reporting(E_ALL);
 
@@ -38,7 +52,7 @@ switch ($method) {
             $params[] = $like;
         }
 
-        $sql = "SELECT c.id, c.nombre, c.telefono, c.direccion, c.created_at,
+        $sql = "SELECT c.id, c.nombre, c.telefono, c.direccion, c.correo, c.lat, c.lng, c.created_at,
                        COUNT(p.id) as total_pedidos,
                        COALESCE(SUM(p.total), 0) as total_gastado,
                        MAX(p.created_at) as ultimo_pedido
@@ -95,6 +109,18 @@ switch ($method) {
         if (isset($body['direccion'])) {
             $campos[] = 'direccion = ?';
             $params[] = trim($body['direccion']);
+        }
+        if (isset($body['correo'])) {
+            $campos[] = 'correo = ?';
+            $params[] = trim($body['correo']) ?: null;
+        }
+        if (array_key_exists('lat', $body)) {
+            $campos[] = 'lat = ?';
+            $params[] = $body['lat'] !== null ? (float)$body['lat'] : null;
+        }
+        if (array_key_exists('lng', $body)) {
+            $campos[] = 'lng = ?';
+            $params[] = $body['lng'] !== null ? (float)$body['lng'] : null;
         }
 
         if (empty($campos)) {

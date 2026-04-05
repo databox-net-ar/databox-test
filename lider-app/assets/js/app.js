@@ -85,7 +85,7 @@ const cart = {
       state.cart.push({ ...producto, cantidad: 1 });
     }
     this.save(); this.updateUI();
-    showToast(`${producto.nombre} agregado`);
+    showToast(`Se añadió ${producto.nombre}`);
   },
   remove(id) {
     const idx = state.cart.findIndex(i => i.id === id);
@@ -256,48 +256,63 @@ async function handleCheckout(e) {
   const btn = document.getElementById('btnConfirmar');
   btn.disabled = true;
 
-  // Paso 1: Mostrar aviso de ubicación y solicitar permiso
+  // Paso 1: Obtener ubicación (sin preguntar si ya fue otorgado el permiso)
   btn.textContent = 'Obteniendo ubicación...';
   const geoOverlay = document.getElementById('geoOverlay');
   let coords = { lat: null, lng: null };
 
   try {
-    coords = await new Promise(function(resolve, reject) {
-      // Mostrar aviso informativo
-      geoOverlay.classList.add('show');
-      var btnPermit = document.getElementById('geoPermitir');
-      var btnSkip   = document.getElementById('geoOmitir');
+    // Consultar el estado del permiso sin dispararlo
+    const permState = navigator.permissions
+      ? (await navigator.permissions.query({ name: 'geolocation' })).state
+      : 'prompt';
 
-      function cleanup() {
-        geoOverlay.classList.remove('show');
-        btnPermit.onclick = null;
-        btnSkip.onclick = null;
-      }
-
-      btnSkip.onclick = function() {
-        cleanup();
-        resolve({ lat: null, lng: null });
-      };
-
-      btnPermit.onclick = function() {
-        cleanup();
-        if (!navigator.geolocation) {
-          resolve({ lat: null, lng: null });
-          return;
-        }
+    if (permState === 'granted') {
+      // Ya tiene permiso: obtener posición directamente sin mostrar el overlay
+      coords = await new Promise(function(resolve) {
         navigator.geolocation.getCurrentPosition(
-          function(pos) {
-            resolve({ lat: pos.coords.latitude, lng: pos.coords.longitude });
-          },
-          function() {
-            resolve({ lat: null, lng: null });
-          },
+          function(pos) { resolve({ lat: pos.coords.latitude, lng: pos.coords.longitude }); },
+          function()    { resolve({ lat: null, lng: null }); },
           { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 }
         );
-      };
-    });
+      });
+    } else if (permState === 'denied') {
+      // Permiso denegado: continuar sin coordenadas
+      coords = { lat: null, lng: null };
+    } else {
+      // Estado 'prompt': mostrar el overlay por primera vez
+      coords = await new Promise(function(resolve) {
+        geoOverlay.classList.add('show');
+        var btnPermit = document.getElementById('geoPermitir');
+        var btnSkip   = document.getElementById('geoOmitir');
+
+        function cleanup() {
+          geoOverlay.classList.remove('show');
+          btnPermit.onclick = null;
+          btnSkip.onclick = null;
+        }
+
+        btnSkip.onclick = function() {
+          cleanup();
+          resolve({ lat: null, lng: null });
+        };
+
+        btnPermit.onclick = function() {
+          cleanup();
+          if (!navigator.geolocation) {
+            resolve({ lat: null, lng: null });
+            return;
+          }
+          navigator.geolocation.getCurrentPosition(
+            function(pos) { resolve({ lat: pos.coords.latitude, lng: pos.coords.longitude }); },
+            function()    { resolve({ lat: null, lng: null }); },
+            { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 }
+          );
+        };
+      });
+    }
   } catch (err) {
-    // Si falla, continuamos sin coordenadas
+    // Si falla la API de permisos o geolocation, continuar sin coordenadas
   }
 
   // Paso 2: Enviar pedido con coordenadas
@@ -381,6 +396,82 @@ function onSearch(val) {
   }, 300);
 }
 
+/* ===== Tabs ===== */
+function selectTab(tab, el) {
+  // Marcar tab activo (excluye el de carrito que no tiene sección)
+  document.querySelectorAll('.nav-tab').forEach(b => b.classList.remove('active'));
+  if (el) el.classList.add('active');
+
+  const inicio   = document.getElementById('inicioSection');
+  const pedidos  = document.getElementById('pedidosSection');
+
+  if (tab === 'pedidos') {
+    inicio.style.display  = 'none';
+    pedidos.style.display = '';
+    cargarMisPedidos();
+  } else {
+    inicio.style.display  = '';
+    pedidos.style.display = 'none';
+  }
+}
+
+/* ===== Mis pedidos ===== */
+async function cargarMisPedidos() {
+  const lista = document.getElementById('pedidosList');
+  lista.innerHTML = `<div class="spinner"><div class="spin"></div></div>`;
+
+  const clienteId = getCookie('cliente_id');
+  if (!clienteId) {
+    lista.innerHTML = `<div class="empty"><div class="empty-icon"><img src="${OM}1F4CB.svg" alt="pedidos" width="56" height="56"></div><p>Aún no hiciste ningún pedido</p></div>`;
+    return;
+  }
+  try {
+    const res  = await fetch(`api/pedidos.php?cliente_id=${clienteId}`);
+    const data = await res.json();
+    if (data.ok) {
+      renderPedidos(data.data);
+    } else {
+      lista.innerHTML = `<div class="empty"><p>No se pudieron cargar los pedidos</p></div>`;
+    }
+  } catch {
+    lista.innerHTML = `<div class="empty"><p>Sin conexión</p></div>`;
+  }
+}
+
+const ESTADO_LABEL = {
+  recibido:   'Recibido',
+  preparando: 'Preparando',
+  listo:      'Listo',
+  entregado:  'Entregado',
+  cancelado:  'Cancelado',
+};
+
+function renderPedidos(lista) {
+  const el = document.getElementById('pedidosList');
+  if (!lista.length) {
+    el.innerHTML = `<div class="empty"><div class="empty-icon"><img src="${OM}1F4CB.svg" alt="pedidos" width="56" height="56"></div><p>Aún no hiciste ningún pedido</p></div>`;
+    return;
+  }
+  el.innerHTML = lista.map(p => {
+    const fecha  = new Date(p.fecha).toLocaleDateString('es-AR', { day:'numeric', month:'short', year:'numeric' });
+    const items  = p.items.map(i => `<div class="pcard-item">${i.cantidad}× ${i.nombre} <span>$${(i.precio * i.cantidad).toLocaleString('es-AR')}</span></div>`).join('');
+    return `
+      <div class="pcard">
+        <div class="pcard-head">
+          <div>
+            <div class="pcard-num">${p.numero}</div>
+            <div class="pcard-fecha">${fecha}</div>
+          </div>
+          <span class="pcard-estado pcard-estado-${p.estado}">${ESTADO_LABEL[p.estado] || p.estado}</span>
+        </div>
+        <div class="pcard-items">${items}</div>
+        <div class="pcard-foot">
+          <span class="pcard-total">Total $${p.total.toLocaleString('es-AR')}</span>
+        </div>
+      </div>`;
+  }).join('');
+}
+
 /* ===== Toast ===== */
 let toastTimer;
 function showToast(msg) {
@@ -389,7 +480,7 @@ function showToast(msg) {
   el.textContent = msg;
   el.classList.add('show');
   clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => el.classList.remove('show'), 2200);
+  toastTimer = setTimeout(() => el.classList.remove('show'), 500);
 }
 
 /* ===== Init ===== */

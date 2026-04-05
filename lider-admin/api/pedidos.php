@@ -1,4 +1,23 @@
 <?php
+/**
+ * API admin — Pedidos (CRUD + distancia)
+ *
+ * GET    /lider-admin/api/pedidos.php[?estado={estado}&q={texto}]
+ *   Lista pedidos con sus ítems. Filtra por estado y/o búsqueda libre
+ *   (número, cliente, teléfono). Devuelve stats por estado (cantidad y monto).
+ *
+ * PUT    /lider-admin/api/pedidos.php
+ *   Cambia el estado de un pedido y recalcula distancia/tiempo vía Google Distance Matrix.
+ *   Body JSON: { id, estado }
+ *   Estados válidos: recibido | preparando | listo | entregado | cancelado
+ *
+ * DELETE /lider-admin/api/pedidos.php?id={id}
+ *   Elimina un pedido y sus ítems en una transacción.
+ *
+ * Helpers internos:
+ *   calcDistanciaYTiempo() — llama a Google Distance Matrix API para obtener km y minutos
+ *   calcularDistanciaPedido() — actualiza distancia_km y tiempo_min en la fila del pedido
+ */
 ini_set('display_errors', 1);
 error_reporting(E_ALL);
 

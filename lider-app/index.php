@@ -29,30 +29,43 @@
   </button>
 </header>
 
-<!-- ===== Search ===== -->
-<div class="search-wrap">
-  <div class="search-box">
-    <span class="search-icon">
-      <img src="https://cdn.jsdelivr.net/npm/openmoji@15.0.0/color/svg/1F50D.svg" alt="buscar" width="18" height="18">
-    </span>
-    <input type="search" id="searchInput" placeholder="Buscar productos..." autocomplete="off" inputmode="search">
+<!-- ===== Inicio section ===== -->
+<div id="inicioSection">
+
+  <!-- Search -->
+  <div class="search-wrap">
+    <div class="search-box">
+      <span class="search-icon">
+        <img src="https://cdn.jsdelivr.net/npm/openmoji@15.0.0/color/svg/1F50D.svg" alt="buscar" width="18" height="18">
+      </span>
+      <input type="search" id="searchInput" placeholder="Buscar productos..." autocomplete="off" inputmode="search">
+    </div>
+  </div>
+
+  <!-- Categories -->
+  <div class="cats-wrap">
+    <div class="cats" id="catsContainer"></div>
+  </div>
+
+  <!-- Section title -->
+  <div class="section-title">
+    Productos <small id="productCount"></small>
+  </div>
+
+  <!-- Products grid -->
+  <main class="products" id="productsGrid">
+    <div class="spinner"><div class="spin"></div></div>
+  </main>
+
+</div><!-- /inicioSection -->
+
+<!-- ===== Pedidos section ===== -->
+<div id="pedidosSection" style="display:none">
+  <div class="section-title">Mis pedidos</div>
+  <div id="pedidosList">
+    <div class="spinner"><div class="spin"></div></div>
   </div>
 </div>
-
-<!-- ===== Categories ===== -->
-<div class="cats-wrap">
-  <div class="cats" id="catsContainer"></div>
-</div>
-
-<!-- ===== Section title ===== -->
-<div class="section-title">
-  Productos <small id="productCount"></small>
-</div>
-
-<!-- ===== Products grid ===== -->
-<main class="products" id="productsGrid">
-  <div class="spinner"><div class="spin"></div></div>
-</main>
 
 <!-- ===== Toast ===== -->
 <div class="toast" id="toast"></div>
@@ -158,7 +171,7 @@
 
 <!-- ===== Bottom nav ===== -->
 <nav class="bottom-nav">
-  <button class="nav-tab active">
+  <button class="nav-tab active" onclick="selectTab('inicio', this)">
     <span class="nav-icon"><img src="https://cdn.jsdelivr.net/npm/openmoji@15.0.0/color/svg/1F3E0.svg" alt="inicio" width="24" height="24"></span>
     Inicio
   </button>
@@ -166,7 +179,7 @@
     <span class="nav-icon"><img src="https://cdn.jsdelivr.net/npm/openmoji@15.0.0/color/svg/1F6D2.svg" alt="carrito" width="24" height="24"></span>
     Carrito
   </button>
-  <button class="nav-tab">
+  <button class="nav-tab" onclick="selectTab('pedidos', this)">
     <span class="nav-icon"><img src="https://cdn.jsdelivr.net/npm/openmoji@15.0.0/color/svg/1F4CB.svg" alt="pedidos" width="24" height="24"></span>
     Pedidos
   </button>

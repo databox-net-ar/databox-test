@@ -77,6 +77,9 @@ try {
             nombre      VARCHAR(120) NOT NULL,
             telefono    VARCHAR(40)  DEFAULT '',
             direccion   VARCHAR(255) DEFAULT '',
+            correo      VARCHAR(150) DEFAULT NULL,
+            lat         DECIMAL(10,7) DEFAULT NULL,
+            lng         DECIMAL(10,7) DEFAULT NULL,
             created_at  TIMESTAMP    DEFAULT CURRENT_TIMESTAMP,
             updated_at  TIMESTAMP    DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
@@ -177,6 +180,24 @@ if ($ok) {
     } catch (Exception $e) {
         $pdo->exec("ALTER TABLE productos ADD COLUMN peso_pieza DECIMAL(6,3) DEFAULT NULL");
         msg("Columna <b>peso_pieza</b> agregada a productos", 'ok');
+    }
+
+    // correo en clientes
+    try {
+        $pdo->query("SELECT correo FROM clientes LIMIT 1");
+        msg("Columna <b>correo</b> ya existe en clientes", 'info');
+    } catch (Exception $e) {
+        $pdo->exec("ALTER TABLE clientes ADD COLUMN correo VARCHAR(150) DEFAULT NULL");
+        msg("Columna <b>correo</b> agregada a clientes", 'ok');
+    }
+
+    // lat, lng en clientes
+    try {
+        $pdo->query("SELECT lat FROM clientes LIMIT 1");
+        msg("Columnas <b>lat, lng</b> ya existen en clientes", 'info');
+    } catch (Exception $e) {
+        $pdo->exec("ALTER TABLE clientes ADD COLUMN lat DECIMAL(10,7) DEFAULT NULL, ADD COLUMN lng DECIMAL(10,7) DEFAULT NULL");
+        msg("Columnas <b>lat, lng</b> agregadas a clientes", 'ok');
     }
 }
 

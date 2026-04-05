@@ -1,4 +1,18 @@
 <?php
+/**
+ * API pública — Clientes
+ *
+ * GET /lider-app/api/clientes.php?id={id}
+ * Devuelve los datos de un cliente por ID.
+ * Usada por el frontend para pre-rellenar el formulario de checkout
+ * cuando el cliente ya compró anteriormente (cookie cliente_id).
+ *
+ * Parámetros GET:
+ *   id (int, requerido) — ID del cliente
+ *
+ * Respuesta:
+ *   { ok: true, data: { id, nombre, telefono, direccion } }
+ */
 header('Content-Type: application/json');
 header('Access-Control-Allow-Origin: *');
 header('Access-Control-Allow-Methods: GET, OPTIONS');

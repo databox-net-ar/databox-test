@@ -1,4 +1,14 @@
 <?php
+/**
+ * API pública — Categorías
+ *
+ * GET /lider-app/api/categorias.php
+ * Devuelve las categorías activas ordenadas por `orden ASC`.
+ * Usada por el frontend de la app para armar el selector de categorías.
+ *
+ * Respuesta:
+ *   { ok: true, data: [ { id, label, emoji, imagen } ] }
+ */
 header('Content-Type: application/json');
 header('Access-Control-Allow-Origin: *');
 

@@ -1,4 +1,21 @@
 <?php
+/**
+ * API admin — Productos (CRUD)
+ *
+ * GET    /lider-admin/api/productos.php[?id={id}&categoria={cat}&q={texto}]
+ *   Con ?id devuelve un único producto. Sin él lista con filtros opcionales.
+ *   Campos: id, nombre, precio, categoria, emoji, imagen, unidad, stock, peso_pieza.
+ *
+ * POST   /lider-admin/api/productos.php
+ *   Crea un producto. Body JSON: { nombre, categoria, precio?, emoji?, imagen?, unidad?, stock?, peso_pieza? }
+ *   El nombre se normaliza a Title Case con mb_convert_case.
+ *
+ * PUT    /lider-admin/api/productos.php
+ *   Actualiza un producto existente. Body JSON con id + campos a modificar.
+ *
+ * DELETE /lider-admin/api/productos.php?id={id}
+ *   Elimina el producto y borra su imagen de lider-media/productos/ si es local.
+ */
 header('Content-Type: application/json');
 header('Access-Control-Allow-Origin: *');
 header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS');
@@ -14,13 +31,6 @@ try {
     http_response_code(500);
     echo json_encode(['ok' => false, 'error' => 'Error de conexión']);
     exit;
-}
-
-// Auto-migración: agregar columna peso_pieza si no existe
-try {
-    $pdo->query("SELECT peso_pieza FROM productos LIMIT 1");
-} catch (Exception $e) {
-    $pdo->exec("ALTER TABLE productos ADD COLUMN peso_pieza DECIMAL(10,3) DEFAULT NULL");
 }
 
 $method = $_SERVER['REQUEST_METHOD'];

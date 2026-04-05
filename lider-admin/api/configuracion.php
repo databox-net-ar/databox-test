@@ -1,4 +1,22 @@
 <?php
+/**
+ * API admin — Configuración del sistema
+ *
+ * GET /lider-admin/api/configuracion.php
+ *   Devuelve todos los parámetros de configuración como objeto clave→valor.
+ *   Crea la tabla `configuracion` e inserta defaults si aún no existen.
+ *
+ * PUT /lider-admin/api/configuracion.php
+ *   Actualiza uno o más parámetros. Body JSON: { clave: valor, ... }
+ *   Solo se aceptan claves permitidas: pedido_minimo, centro_dist_lat,
+ *   centro_dist_lng, precio_km.
+ *
+ * Claves disponibles:
+ *   pedido_minimo    — monto mínimo para confirmar un pedido (0 = sin mínimo)
+ *   centro_dist_lat  — latitud del centro de distribución
+ *   centro_dist_lng  — longitud del centro de distribución
+ *   precio_km        — costo de envío por kilómetro (0 = sin costo)
+ */
 ini_set('display_errors', 1);
 error_reporting(E_ALL);
 

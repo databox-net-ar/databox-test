@@ -476,6 +476,45 @@
   </div>
 </div>
 
+<!-- ===== Modal Editar Cliente ===== -->
+<div class="modal-backdrop" id="cliModalBackdrop" onclick="if(event.target===this)cerrarModalCliente()">
+  <div class="modal" style="max-width:480px">
+    <div class="modal-header">
+      <div class="modal-title">Editar cliente</div>
+      <button class="btn btn-ghost" onclick="cerrarModalCliente()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-row">
+        <div class="form-group">
+          <label>Nombre *</label>
+          <input type="text" id="cliNombre" placeholder="Nombre completo">
+        </div>
+        <div class="form-group">
+          <label>Teléfono</label>
+          <input type="tel" id="cliTelefono" placeholder="Ej: 11 2345-6789">
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Correo electrónico</label>
+        <input type="email" id="cliCorreo" placeholder="email@ejemplo.com">
+      </div>
+      <div class="form-group">
+        <label>Dirección</label>
+        <input type="text" id="cliDireccion" placeholder="Calle, número, piso/depto">
+      </div>
+      <div class="form-group">
+        <label>Ubicación en el mapa</label>
+        <div id="cliMapInfo" class="config-hint" style="margin-bottom:8px">Sin ubicación seleccionada.</div>
+        <button type="button" class="btn btn-ghost" onclick="abrirMapaSelector('cliente')">🗺️ Seleccionar en el mapa</button>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="cerrarModalCliente()">Cancelar</button>
+      <button class="btn btn-primary" onclick="guardarCliente()">Guardar</button>
+    </div>
+  </div>
+</div>
+
 <!-- ===== Confirm dialog ===== -->
 <div class="confirm-backdrop" id="confirmBackdrop">
   <div class="confirm-box">

@@ -1,4 +1,18 @@
 <?php
+/**
+ * API pública — Productos
+ *
+ * GET /lider-app/api/productos.php[?categoria={id}&q={texto}]
+ * Devuelve los productos disponibles con filtros opcionales de categoría y búsqueda.
+ * Usada por el frontend para renderizar el catálogo y el buscador.
+ *
+ * Parámetros GET:
+ *   categoria (string) — slug de categoría; 'todos' para todas (default)
+ *   q         (string) — texto libre para buscar por nombre
+ *
+ * Respuesta:
+ *   { ok: true, data: [ { id, nombre, precio, categoria, emoji, imagen, unidad, stock } ] }
+ */
 header('Content-Type: application/json');
 header('Access-Control-Allow-Origin: *');
 

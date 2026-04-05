@@ -1,4 +1,20 @@
 <?php
+/**
+ * API pública — Pedidos
+ *
+ * POST /lider-app/api/pedidos.php
+ *   Crea un nuevo pedido. Busca o crea el cliente por nombre+teléfono,
+ *   inserta el pedido y sus ítems en una transacción, y calcula
+ *   distancia/tiempo desde el centro de distribución via Google Distance Matrix API.
+ *   Body JSON: { items, cliente, telefono, direccion, notas, lat?, lng? }
+ *   Respuesta: { ok: true, pedido: { numero, fecha, cliente, ... } }
+ *
+ * GET /lider-app/api/pedidos.php
+ *   Lista los últimos 20 pedidos con sus ítems.
+ *   Respuesta: { ok: true, data: [ { id, numero, cliente, items, total, estado, ... } ] }
+ *
+ * Auto-migraciones: agrega columnas lat, lng, distancia_km, tiempo_min si no existen.
+ */
 ini_set('display_errors', 1);
 ini_set('log_errors', 1);
 error_reporting(E_ALL);
@@ -24,27 +40,6 @@ try {
     http_response_code(500);
     echo json_encode(['ok' => false, 'error' => 'DB: ' . $e->getMessage()]);
     exit;
-}
-
-// Auto-migración: agregar columnas lat/lng si no existen
-try {
-    $pdo->query("SELECT lat FROM pedidos LIMIT 1");
-} catch (Exception $e) {
-    $pdo->exec("ALTER TABLE pedidos ADD COLUMN lat DECIMAL(10,7) DEFAULT NULL, ADD COLUMN lng DECIMAL(10,7) DEFAULT NULL");
-}
-
-// Auto-migración: agregar columna distancia_km
-try {
-    $pdo->query("SELECT distancia_km FROM pedidos LIMIT 1");
-} catch (Exception $e) {
-    $pdo->exec("ALTER TABLE pedidos ADD COLUMN distancia_km DECIMAL(8,2) DEFAULT NULL");
-}
-
-// Auto-migración: agregar columna tiempo_min
-try {
-    $pdo->query("SELECT tiempo_min FROM pedidos LIMIT 1");
-} catch (Exception $e) {
-    $pdo->exec("ALTER TABLE pedidos ADD COLUMN tiempo_min INT UNSIGNED DEFAULT NULL");
 }
 
 // Obtener distancia y tiempo por calles usando Google Distance Matrix API
@@ -128,7 +123,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         $stmt = $pdo->prepare("
             INSERT INTO pedidos (numero, cliente_id, cliente, telefono, direccion, notas, total, estado, lat, lng, distancia_km, tiempo_min)
-            VALUES (?, ?, ?, ?, ?, ?, 'recibido', ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?, 'recibido', ?, ?, ?, ?)
         ");
         $stmt->execute([
             $numero,
@@ -159,6 +154,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             ]);
         }
 
+        // Guardar ubicación GPS en la ficha del cliente
+        if ($pedLat !== null && $pedLng !== null) {
+            $pdo->prepare("UPDATE clientes SET lat = ?, lng = ? WHERE id = ?")
+                ->execute([$pedLat, $pedLng, $clienteId]);
+        }
+
         $pdo->commit();
 
         $pedido = [
@@ -180,6 +181,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         http_response_code(500);
         echo json_encode(['ok' => false, 'error' => 'Error al guardar pedido']);
     }
+    exit;
+}
+
+// GET: pedidos de un cliente específico
+if (isset($_GET['cliente_id'])) {
+    $cliId = (int)$_GET['cliente_id'];
+    $stmt  = $pdo->prepare("
+        SELECT id, numero, total, estado, created_at as fecha
+        FROM pedidos WHERE cliente_id = ? ORDER BY id DESC LIMIT 50
+    ");
+    $stmt->execute([$cliId]);
+    $pedidos = $stmt->fetchAll();
+    foreach ($pedidos as &$ped) {
+        $si = $pdo->prepare("SELECT nombre, precio, cantidad FROM pedido_items WHERE pedido_id = ?");
+        $si->execute([$ped['id']]);
+        $ped['items'] = $si->fetchAll();
+        $ped['total'] = (float)$ped['total'];
+    }
+    echo json_encode(['ok' => true, 'data' => $pedidos]);
     exit;
 }
 

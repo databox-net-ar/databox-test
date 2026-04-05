@@ -716,21 +716,89 @@ function renderClientes() {
     return;
   }
   lista.innerHTML = '<table class="table"><thead><tr>' +
-    '<th>Nombre</th><th>Teléfono</th><th>Dirección</th><th>Pedidos</th><th>Total gastado</th><th>Último pedido</th><th></th>' +
+    '<th>Nombre / Correo</th><th>Teléfono</th><th>Dirección / Ubicación</th><th>Pedidos</th><th>Total gastado</th><th>Último pedido</th><th></th>' +
     '</tr></thead><tbody>' +
-    clientes.map(function(c) {
-      var ultimo = c.ultimo_pedido ? new Date(c.ultimo_pedido).toLocaleDateString('es-AR') : '—';
-      return '<tr>' +
-        '<td><strong>' + esc(c.nombre) + '</strong></td>' +
-        '<td>' + esc(c.telefono || '—') + '</td>' +
-        '<td>' + esc(c.direccion ? (c.direccion.length > 35 ? c.direccion.substring(0,35) + '...' : c.direccion) : '—') + '</td>' +
-        '<td style="text-align:center">' + c.total_pedidos + '</td>' +
-        '<td>$' + Number(c.total_gastado).toLocaleString('es-AR') + '</td>' +
-        '<td>' + ultimo + '</td>' +
-        '<td><button class="btn btn-ghost btn-sm" onclick="eliminarCliente(' + c.id + ',\'' + esc(c.nombre).replace(/'/g, "\\'") + '\')">🗑️</button></td>' +
-        '</tr>';
-    }).join('') +
+    clientes.map(function(c) { return renderFilaCliente(c); }).join('') +
     '</tbody></table>';
+}
+
+function renderFilaCliente(c) {
+  var ultimo  = c.ultimo_pedido ? new Date(c.ultimo_pedido).toLocaleDateString('es-AR') : '—';
+  var correo  = c.correo ? '<br><a class="cli-email" href="mailto:' + esc(c.correo) + '">' + esc(c.correo) + '</a>' : '';
+  var dir     = c.direccion ? esc(c.direccion.length > 40 ? c.direccion.substring(0,40) + '…' : c.direccion) : '—';
+  var mapa    = (c.lat && c.lng)
+    ? '<br><a class="cli-mapa" href="https://www.google.com/maps?q=' + c.lat + ',' + c.lng + '" target="_blank" rel="noopener">🗺️ Ver ubicación</a>'
+    : '';
+  return '<tr id="cli-row-' + c.id + '">' +
+    '<td><strong>' + esc(c.nombre) + '</strong>' + correo + '</td>' +
+    '<td>' + esc(c.telefono || '—') + '</td>' +
+    '<td>' + dir + mapa + '</td>' +
+    '<td style="text-align:center">' + c.total_pedidos + '</td>' +
+    '<td>$' + Number(c.total_gastado).toLocaleString('es-AR') + '</td>' +
+    '<td>' + ultimo + '</td>' +
+    '<td><div class="actions">' +
+      '<button class="btn-icon-sm" title="Editar" onclick="abrirEditarCliente(' + c.id + ')">✏️</button>' +
+      '<button class="btn-icon-sm" title="Eliminar" onclick="eliminarCliente(' + c.id + ',\'' + esc(c.nombre).replace(/'/g, "\\'") + '\')">🗑️</button>' +
+    '</div></td>' +
+    '</tr>';
+}
+
+/* ===== Modal editar cliente ===== */
+var clienteEditandoId = null;
+
+function abrirEditarCliente(id) {
+  var c = clientes.find(function(x) { return x.id === id; });
+  if (!c) return;
+  clienteEditandoId = id;
+  document.getElementById('cliNombre').value    = c.nombre    || '';
+  document.getElementById('cliTelefono').value  = c.telefono  || '';
+  document.getElementById('cliCorreo').value    = c.correo    || '';
+  document.getElementById('cliDireccion').value = c.direccion || '';
+
+  cliMapLat = c.lat ? parseFloat(c.lat) : null;
+  cliMapLng = c.lng ? parseFloat(c.lng) : null;
+  document.getElementById('cliMapInfo').innerHTML = (cliMapLat && cliMapLng)
+    ? '📍 <strong>' + cliMapLat.toFixed(6) + ', ' + cliMapLng.toFixed(6) + '</strong> — <a href="https://www.google.com/maps?q=' + cliMapLat + ',' + cliMapLng + '" target="_blank" style="color:var(--primary)">Ver en Maps</a>'
+    : 'Sin ubicación seleccionada.';
+
+  document.getElementById('cliModalBackdrop').classList.add('open');
+  document.getElementById('cliNombre').focus();
+}
+
+function cerrarModalCliente() {
+  document.getElementById('cliModalBackdrop').classList.remove('open');
+  clienteEditandoId = null;
+  cliMapLat = null;
+  cliMapLng = null;
+}
+
+async function guardarCliente() {
+  if (!clienteEditandoId) return;
+  var body = {
+    id:        clienteEditandoId,
+    nombre:    document.getElementById('cliNombre').value.trim(),
+    telefono:  document.getElementById('cliTelefono').value.trim(),
+    correo:    document.getElementById('cliCorreo').value.trim(),
+    direccion: document.getElementById('cliDireccion').value.trim(),
+    lat:       cliMapLat,
+    lng:       cliMapLng,
+  };
+  if (!body.nombre) { showToast('El nombre es obligatorio', true); return; }
+  try {
+    var res  = await fetch(CLI_API, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+    var data = await res.json();
+    if (data.ok) {
+      var c = clientes.find(function(x) { return x.id === clienteEditandoId; });
+      if (c) { c.nombre = body.nombre; c.telefono = body.telefono; c.correo = body.correo; c.direccion = body.direccion; c.lat = body.lat; c.lng = body.lng; }
+      cerrarModalCliente();
+      renderClientes();
+      showToast('Cliente actualizado');
+    } else {
+      showToast(data.error || 'Error al guardar', true);
+    }
+  } catch (e) {
+    showToast('Error de conexión', true);
+  }
 }
 
 function eliminarCliente(id, nombre) {
@@ -831,6 +899,9 @@ var mapaSelector = null;
 var mapaMarker = null;
 var miniMapa = null;
 var miniMarker = null;
+var mapaContext = 'config'; // 'config' | 'cliente'
+var cliMapLat = null;
+var cliMapLng = null;
 
 function actualizarCentroInfo() {
   var info = document.getElementById('cfgCentroInfo');
@@ -856,17 +927,21 @@ function actualizarCentroInfo() {
   }
 }
 
-function abrirMapaSelector() {
+function abrirMapaSelector(context) {
+  mapaContext = context || 'config';
   document.getElementById('mapaBackdrop').classList.add('open');
 
   setTimeout(function() {
-    var defaultLat = centroDistLat || -34.6037;
-    var defaultLng = centroDistLng || -58.3816;
+    var activeLat = mapaContext === 'cliente' ? cliMapLat : centroDistLat;
+    var activeLng = mapaContext === 'cliente' ? cliMapLng : centroDistLng;
+    var defaultLat = activeLat || -34.6037;
+    var defaultLng = activeLng || -58.3816;
     var center = { lat: defaultLat, lng: defaultLng };
 
+    var activeLat2 = mapaContext === 'cliente' ? cliMapLat : centroDistLat;
     mapaSelector = new google.maps.Map(document.getElementById('mapaSelector'), {
       center: center,
-      zoom: centroDistLat ? 16 : 12
+      zoom: activeLat2 ? 16 : 12
     });
 
     mapaMarker = new google.maps.Marker({
@@ -903,11 +978,20 @@ function cerrarMapaSelector() {
 function aceptarUbicacion() {
   if (!mapaMarker) return;
   var pos = mapaMarker.getPosition();
-  centroDistLat = pos.lat();
-  centroDistLng = pos.lng();
-  cerrarMapaSelector();
-  actualizarCentroInfo();
-  showToast('Ubicaci\u00f3n seleccionada. Record\u00e1 guardar la configuraci\u00f3n.');
+  if (mapaContext === 'cliente') {
+    cliMapLat = pos.lat();
+    cliMapLng = pos.lng();
+    document.getElementById('cliMapInfo').innerHTML =
+      '📍 <strong>' + cliMapLat.toFixed(6) + ', ' + cliMapLng.toFixed(6) + '</strong>';
+    cerrarMapaSelector();
+    showToast('Ubicación del cliente seleccionada');
+  } else {
+    centroDistLat = pos.lat();
+    centroDistLng = pos.lng();
+    cerrarMapaSelector();
+    actualizarCentroInfo();
+    showToast('Ubicaci\u00f3n seleccionada. Record\u00e1 guardar la configuraci\u00f3n.');
+  }
 }
 
 /* ===== Init ===== */

@@ -1,4 +1,20 @@
 <?php
+/**
+ * API admin — Categorías (CRUD)
+ *
+ * GET    /lider-admin/api/categorias.php[?todas=1]
+ *   Lista las categorías. Sin ?todas solo devuelve las activas.
+ *
+ * POST   /lider-admin/api/categorias.php
+ *   Crea una nueva categoría. Body JSON: { id, label, emoji?, imagen? }
+ *   El `id` se normaliza a minúsculas/sin espacios. Falla con 409 si ya existe.
+ *
+ * PUT    /lider-admin/api/categorias.php
+ *   Actualiza una categoría existente. Body JSON: { id, label?, emoji?, imagen?, orden?, activa? }
+ *
+ * DELETE /lider-admin/api/categorias.php?id={id}
+ *   Elimina una categoría. Falla con 409 si tiene productos asociados.
+ */
 header('Content-Type: application/json');
 header('Access-Control-Allow-Origin: *');
 header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS');
