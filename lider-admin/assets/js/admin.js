@@ -739,11 +739,15 @@ function actualizarCentroInfo() {
     miniEl.style.display = 'block';
     // Renderizar mini mapa
     setTimeout(function() {
-      if (miniMapa) { miniMapa.remove(); miniMapa = null; }
-      miniMapa = L.map('cfgMiniMapa', { zoomControl: false, dragging: false, scrollWheelZoom: false, doubleClickZoom: false, attributionControl: false })
-        .setView([centroDistLat, centroDistLng], 15);
-      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(miniMapa);
-      miniMarker = L.marker([centroDistLat, centroDistLng]).addTo(miniMapa);
+      var center = { lat: centroDistLat, lng: centroDistLng };
+      miniMapa = new google.maps.Map(miniEl, {
+        center: center,
+        zoom: 15,
+        disableDefaultUI: true,
+        gestureHandling: 'none',
+        clickableIcons: false
+      });
+      miniMarker = new google.maps.Marker({ position: center, map: miniMapa });
     }, 100);
   } else {
     info.textContent = 'Sin ubicaci\u00f3n configurada.';
@@ -757,25 +761,29 @@ function abrirMapaSelector() {
   setTimeout(function() {
     var defaultLat = centroDistLat || -34.6037;
     var defaultLng = centroDistLng || -58.3816;
+    var center = { lat: defaultLat, lng: defaultLng };
 
-    if (mapaSelector) { mapaSelector.remove(); mapaSelector = null; }
-
-    mapaSelector = L.map('mapaSelector').setView([defaultLat, defaultLng], centroDistLat ? 16 : 12);
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      attribution: '&copy; OpenStreetMap'
-    }).addTo(mapaSelector);
-
-    mapaMarker = L.marker([defaultLat, defaultLng], { draggable: true }).addTo(mapaSelector);
-    actualizarCoordsTxt(defaultLat, defaultLng);
-
-    mapaMarker.on('dragend', function() {
-      var pos = mapaMarker.getLatLng();
-      actualizarCoordsTxt(pos.lat, pos.lng);
+    mapaSelector = new google.maps.Map(document.getElementById('mapaSelector'), {
+      center: center,
+      zoom: centroDistLat ? 16 : 12
     });
 
-    mapaSelector.on('click', function(e) {
-      mapaMarker.setLatLng(e.latlng);
-      actualizarCoordsTxt(e.latlng.lat, e.latlng.lng);
+    mapaMarker = new google.maps.Marker({
+      position: center,
+      map: mapaSelector,
+      draggable: true
+    });
+
+    actualizarCoordsTxt(defaultLat, defaultLng);
+
+    mapaMarker.addListener('dragend', function() {
+      var pos = mapaMarker.getPosition();
+      actualizarCoordsTxt(pos.lat(), pos.lng());
+    });
+
+    mapaSelector.addListener('click', function(e) {
+      mapaMarker.setPosition(e.latLng);
+      actualizarCoordsTxt(e.latLng.lat(), e.latLng.lng());
     });
   }, 200);
 }
@@ -787,14 +795,15 @@ function actualizarCoordsTxt(lat, lng) {
 
 function cerrarMapaSelector() {
   document.getElementById('mapaBackdrop').classList.remove('open');
-  if (mapaSelector) { mapaSelector.remove(); mapaSelector = null; }
+  mapaSelector = null;
+  mapaMarker = null;
 }
 
 function aceptarUbicacion() {
   if (!mapaMarker) return;
-  var pos = mapaMarker.getLatLng();
-  centroDistLat = pos.lat;
-  centroDistLng = pos.lng;
+  var pos = mapaMarker.getPosition();
+  centroDistLat = pos.lat();
+  centroDistLng = pos.lng();
   cerrarMapaSelector();
   actualizarCentroInfo();
   showToast('Ubicaci\u00f3n seleccionada. Record\u00e1 guardar la configuraci\u00f3n.');

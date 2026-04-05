@@ -5,8 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Lider Admin — Productos</title>
   <link rel="stylesheet" href="assets/css/admin.css">
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
-  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyD5WChZRhfb478oxJr7kUBwufoe-G_5SBg"></script>
 </head>
 <body>
 
