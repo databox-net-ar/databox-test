@@ -3,6 +3,17 @@ const OM = 'https://cdn.jsdelivr.net/npm/openmoji@15.0.0/color/svg/';
 // Pexels CDN — fotos gratuitas (pexels.com)
 function px(id) { return `https://images.pexels.com/photos/${id}/pexels-photo-${id}.jpeg?auto=compress&cs=tinysrgb&w=120&h=120&fit=crop`; }
 
+/* ===== Cookies ===== */
+function setCookie(name, value, days) {
+  var d = new Date();
+  d.setTime(d.getTime() + (days * 24 * 60 * 60 * 1000));
+  document.cookie = name + '=' + encodeURIComponent(value) + ';expires=' + d.toUTCString() + ';path=/;SameSite=Lax';
+}
+function getCookie(name) {
+  var match = document.cookie.match(new RegExp('(^| )' + name + '=([^;]+)'));
+  return match ? decodeURIComponent(match[2]) : null;
+}
+
 /* ===== State ===== */
 let pedidoMinimo = 0;
 const state = {
@@ -305,6 +316,10 @@ async function handleCheckout(e) {
   try {
     const res = await enviarPedido(datos);
     if (res.ok) {
+      // Guardar cliente_id en cookie (365 días)
+      if (res.pedido && res.pedido.cliente_id) {
+        setCookie('cliente_id', res.pedido.cliente_id, 365);
+      }
       document.getElementById('checkoutForm').style.display = 'none';
       document.getElementById('confirmNum').textContent = res.pedido.numero;
       document.getElementById('confirmScreen').classList.add('show');
@@ -381,6 +396,21 @@ function showToast(msg) {
 document.addEventListener('DOMContentLoaded', async () => {
   tema.init();
   cart.load();
+
+  // Auto-fill datos del cliente desde cookie
+  var clienteId = getCookie('cliente_id');
+  if (clienteId) {
+    try {
+      var cliRes = await fetch('api/clientes.php?id=' + clienteId);
+      var cliData = await cliRes.json();
+      if (cliData.ok && cliData.data) {
+        document.getElementById('fCliente').value = cliData.data.nombre || '';
+        document.getElementById('fTelefono').value = cliData.data.telefono || '';
+        document.getElementById('fDireccion').value = cliData.data.direccion || '';
+      }
+    } catch (e) { /* silencioso */ }
+  }
+
   // Cargar config
   try {
     const cfgRes = await fetch('api/configuracion.php');

@@ -214,6 +214,24 @@
             </div>
           </div>
 
+          <div class="config-card">
+            <div class="config-card-header">
+              <span class="config-card-icon">🚚</span>
+              <div>
+                <div class="config-card-title">Precio por kilómetro</div>
+                <div class="config-card-desc">Monto que se cobra por cada kilómetro de distancia entre el centro de distribución y el cliente.</div>
+              </div>
+            </div>
+            <div class="config-card-body">
+              <div class="config-input-row">
+                <span class="config-currency">$</span>
+                <input type="number" id="cfgPrecioKm" min="0" step="0.01" placeholder="0" class="config-input">
+                <span style="margin-left:8px;color:var(--text-secondary);font-size:0.9rem">/ km</span>
+              </div>
+              <div class="config-hint" id="cfgPrecioKmHint">Valor actual: $0 / km — Dejá en 0 para no cobrar envío por distancia.</div>
+            </div>
+          </div>
+
           <div class="config-actions">
             <button class="btn btn-primary" onclick="guardarConfig()">💾 Guardar configuración</button>
             <span class="config-saved" id="configSaved" style="display:none">✅ Guardado</span>

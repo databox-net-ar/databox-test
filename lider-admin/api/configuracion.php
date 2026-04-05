@@ -33,6 +33,7 @@ $defaults = [
     'pedido_minimo' => '0',
     'centro_dist_lat' => '',
     'centro_dist_lng' => '',
+    'precio_km' => '0',
 ];
 foreach ($defaults as $clave => $valorDef) {
     $stmt = $pdo->prepare("INSERT IGNORE INTO configuracion (clave, valor) VALUES (?, ?)");
@@ -62,7 +63,7 @@ switch ($method) {
             break;
         }
 
-        $claves_permitidas = ['pedido_minimo', 'centro_dist_lat', 'centro_dist_lng'];
+        $claves_permitidas = ['pedido_minimo', 'centro_dist_lat', 'centro_dist_lng', 'precio_km'];
         $stmt = $pdo->prepare("INSERT INTO configuracion (clave, valor) VALUES (?, ?) ON DUPLICATE KEY UPDATE valor = VALUES(valor)");
 
         foreach ($body as $clave => $valor) {

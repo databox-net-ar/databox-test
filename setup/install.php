@@ -72,15 +72,37 @@ try {
 
 try {
     $pdo->exec("
+        CREATE TABLE IF NOT EXISTS clientes (
+            id          INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+            nombre      VARCHAR(120) NOT NULL,
+            telefono    VARCHAR(40)  DEFAULT '',
+            direccion   VARCHAR(255) DEFAULT '',
+            created_at  TIMESTAMP    DEFAULT CURRENT_TIMESTAMP,
+            updated_at  TIMESTAMP    DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+    ");
+    msg("Tabla <b>clientes</b> creada/verificada", 'ok');
+} catch (Exception $e) {
+    msg("Error creando tabla clientes: " . htmlspecialchars($e->getMessage()), 'error');
+    $ok = false;
+}
+
+try {
+    $pdo->exec("
         CREATE TABLE IF NOT EXISTS pedidos (
             id          INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
             numero      VARCHAR(20)  NOT NULL UNIQUE,
+            cliente_id  INT UNSIGNED DEFAULT NULL,
             cliente     VARCHAR(120) NOT NULL,
             telefono    VARCHAR(40)  DEFAULT '',
             direccion   VARCHAR(255) DEFAULT '',
             notas       TEXT,
             total       DECIMAL(12,2) NOT NULL DEFAULT 0,
             estado      VARCHAR(30)  NOT NULL DEFAULT 'recibido',
+            lat         DECIMAL(10,7) DEFAULT NULL,
+            lng         DECIMAL(10,7) DEFAULT NULL,
+            distancia_km DECIMAL(8,2) DEFAULT NULL,
+            tiempo_min  INT UNSIGNED DEFAULT NULL,
             created_at  TIMESTAMP    DEFAULT CURRENT_TIMESTAMP,
             updated_at  TIMESTAMP    DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
@@ -108,6 +130,54 @@ try {
 } catch (Exception $e) {
     msg("Error creando tabla pedido_items: " . htmlspecialchars($e->getMessage()), 'error');
     $ok = false;
+}
+
+// ── 1b. Migraciones: agregar columnas faltantes ──────────────────
+if ($ok) {
+    // lat, lng en pedidos
+    try {
+        $pdo->query("SELECT lat FROM pedidos LIMIT 1");
+        msg("Columnas <b>lat, lng</b> ya existen en pedidos", 'info');
+    } catch (Exception $e) {
+        $pdo->exec("ALTER TABLE pedidos ADD COLUMN lat DECIMAL(10,7) DEFAULT NULL, ADD COLUMN lng DECIMAL(10,7) DEFAULT NULL");
+        msg("Columnas <b>lat, lng</b> agregadas a pedidos", 'ok');
+    }
+
+    // distancia_km en pedidos
+    try {
+        $pdo->query("SELECT distancia_km FROM pedidos LIMIT 1");
+        msg("Columna <b>distancia_km</b> ya existe en pedidos", 'info');
+    } catch (Exception $e) {
+        $pdo->exec("ALTER TABLE pedidos ADD COLUMN distancia_km DECIMAL(8,2) DEFAULT NULL");
+        msg("Columna <b>distancia_km</b> agregada a pedidos", 'ok');
+    }
+
+    // tiempo_min en pedidos
+    try {
+        $pdo->query("SELECT tiempo_min FROM pedidos LIMIT 1");
+        msg("Columna <b>tiempo_min</b> ya existe en pedidos", 'info');
+    } catch (Exception $e) {
+        $pdo->exec("ALTER TABLE pedidos ADD COLUMN tiempo_min INT UNSIGNED DEFAULT NULL");
+        msg("Columna <b>tiempo_min</b> agregada a pedidos", 'ok');
+    }
+
+    // cliente_id en pedidos
+    try {
+        $pdo->query("SELECT cliente_id FROM pedidos LIMIT 1");
+        msg("Columna <b>cliente_id</b> ya existe en pedidos", 'info');
+    } catch (Exception $e) {
+        $pdo->exec("ALTER TABLE pedidos ADD COLUMN cliente_id INT UNSIGNED DEFAULT NULL AFTER numero");
+        msg("Columna <b>cliente_id</b> agregada a pedidos", 'ok');
+    }
+
+    // peso_pieza en productos
+    try {
+        $pdo->query("SELECT peso_pieza FROM productos LIMIT 1");
+        msg("Columna <b>peso_pieza</b> ya existe en productos", 'info');
+    } catch (Exception $e) {
+        $pdo->exec("ALTER TABLE productos ADD COLUMN peso_pieza DECIMAL(6,3) DEFAULT NULL");
+        msg("Columna <b>peso_pieza</b> agregada a productos", 'ok');
+    }
 }
 
 // ── 2. Insertar categorías de ejemplo ────────────────────────────

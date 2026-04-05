@@ -547,7 +547,7 @@ function renderPedidos() {
         '<div class="ped-card-meta">' +
           '<span>📞 ' + esc(p.telefono || '—') + '</span>' +
           '<span>🏠 ' + esc(p.direccion ? (p.direccion.length > 30 ? p.direccion.substring(0, 30) + '...' : p.direccion) : '—') + '</span>' +
-          (p.lat && p.lng ? '<span>📍 Ubicación obtenida</span>' : '') +
+          '<span>📍 ' + parseFloat(p.distancia_km || 0).toFixed(1) + ' km • ' + parseInt(p.tiempo_min || 0) + ' min' + (cfgPrecioKm > 0 ? ' • $' + (parseFloat(p.distancia_km || 0) * cfgPrecioKm).toLocaleString('es-AR', {minimumFractionDigits:0, maximumFractionDigits:0}) : '') + '</span>' +
         '</div>' +
         '<div class="ped-card-footer">' +
           '<span class="ped-card-items">' + itemCount + ' producto' + (itemCount !== 1 ? 's' : '') + '</span>' +
@@ -578,6 +578,9 @@ function abrirPedido(id) {
   if (pedidoActual.lat && pedidoActual.lng) {
     var mapUrl = 'https://www.google.com/maps?q=' + pedidoActual.lat + ',' + pedidoActual.lng;
     document.getElementById('pedDetMapLink').href = mapUrl;
+    var distKm = parseFloat(pedidoActual.distancia_km || 0);
+    var costoEnvio = cfgPrecioKm > 0 ? ' • $' + (distKm * cfgPrecioKm).toLocaleString('es-AR', {minimumFractionDigits:0, maximumFractionDigits:0}) : '';
+    document.getElementById('pedDetMapLink').textContent = '📍 ' + distKm.toFixed(1) + ' km • ' + parseInt(pedidoActual.tiempo_min || 0) + ' min' + costoEnvio + ' — Ver en mapa';
     ubiEl.style.display = '';
   } else {
     ubiEl.style.display = 'none';
@@ -688,6 +691,13 @@ async function cargarConfiguracion() {
       centroDistLat = cLat ? parseFloat(cLat) : null;
       centroDistLng = cLng ? parseFloat(cLng) : null;
       actualizarCentroInfo();
+
+      // Precio por km
+      var precioKm = data.data.precio_km || '0';
+      cfgPrecioKm = parseFloat(precioKm);
+      document.getElementById('cfgPrecioKm').value = precioKm;
+      document.getElementById('cfgPrecioKmHint').textContent =
+        'Valor actual: $' + Number(precioKm).toLocaleString('es-AR', {minimumFractionDigits:0, maximumFractionDigits:2}) + ' / km' + (precioKm === '0' ? ' — Dejá en 0 para no cobrar envío por distancia.' : '');
     }
   } catch (e) {
     showToast('Error al cargar configuraci\u00f3n', true);
@@ -696,7 +706,8 @@ async function cargarConfiguracion() {
 
 async function guardarConfig() {
   var pedidoMinimo = document.getElementById('cfgPedidoMinimo').value || '0';
-  var body = { pedido_minimo: pedidoMinimo };
+  var precioKm = document.getElementById('cfgPrecioKm').value || '0';
+  var body = { pedido_minimo: pedidoMinimo, precio_km: precioKm };
   if (centroDistLat !== null && centroDistLng !== null) {
     body.centro_dist_lat = String(centroDistLat);
     body.centro_dist_lng = String(centroDistLng);
@@ -723,9 +734,21 @@ async function guardarConfig() {
   }
 }
 
+/* ===== Distancia Haversine ===== */
+function calcDistanciaKm(lat1, lng1, lat2, lng2) {
+  var R = 6371;
+  var dLat = (lat2 - lat1) * Math.PI / 180;
+  var dLng = (lng2 - lng1) * Math.PI / 180;
+  var a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+    Math.sin(dLng / 2) * Math.sin(dLng / 2);
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
 /* ===== Mapa centro de distribución ===== */
 var centroDistLat = null;
 var centroDistLng = null;
+var cfgPrecioKm = 0;
 var mapaSelector = null;
 var mapaMarker = null;
 var miniMapa = null;
@@ -815,6 +838,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   poblarSelects();
   cargarProductos();
   initDragDrop();
+  cargarConfiguracion();
 
   // cerrar modal con Escape
   document.addEventListener('keydown', e => {

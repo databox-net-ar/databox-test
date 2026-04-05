@@ -19,6 +19,51 @@ try {
     exit;
 }
 
+function calcDistanciaYTiempo($lat1, $lng1, $lat2, $lng2) {
+    $apiKey = 'AIzaSyDXN7-CpoFdxh_6V-_7UQkPzWFbX6_T1p0';
+    $url = 'https://maps.googleapis.com/maps/api/distancematrix/json?'
+         . 'origins=' . $lat1 . ',' . $lng1
+         . '&destinations=' . $lat2 . ',' . $lng2
+         . '&mode=driving&language=es&key=' . $apiKey;
+    $resp = @file_get_contents($url);
+    if ($resp) {
+        $data = json_decode($resp, true);
+        $el = isset($data['rows'][0]['elements'][0]) ? $data['rows'][0]['elements'][0] : null;
+        if ($el && isset($el['distance']['value']) && isset($el['duration']['value'])) {
+            return array(
+                'km'  => round($el['distance']['value'] / 1000, 2),
+                'min' => round($el['duration']['value'] / 60)
+            );
+        }
+    }
+    return array('km' => 0, 'min' => 0);
+}
+
+function calcularDistanciaPedido($pdo, $pedidoId) {
+    $stmt = $pdo->prepare("SELECT lat, lng FROM pedidos WHERE id = ?");
+    $stmt->execute([$pedidoId]);
+    $ped = $stmt->fetch();
+    $distancia = 0;
+    $tiempo = 0;
+    if ($ped && $ped['lat'] && $ped['lng']) {
+        $stmtCfg = $pdo->prepare("SELECT clave, valor FROM configuracion WHERE clave IN ('centro_dist_lat','centro_dist_lng')");
+        $stmtCfg->execute();
+        $cfgRows = $stmtCfg->fetchAll();
+        $cfg = [];
+        foreach ($cfgRows as $r) { $cfg[$r['clave']] = $r['valor']; }
+        if (!empty($cfg['centro_dist_lat']) && !empty($cfg['centro_dist_lng'])) {
+            $result = calcDistanciaYTiempo(
+                (float)$cfg['centro_dist_lat'], (float)$cfg['centro_dist_lng'],
+                (float)$ped['lat'], (float)$ped['lng']
+            );
+            $distancia = $result['km'];
+            $tiempo = $result['min'];
+        }
+    }
+    $pdo->prepare("UPDATE pedidos SET distancia_km = ?, tiempo_min = ? WHERE id = ?")->execute([$distancia, $tiempo, $pedidoId]);
+    return array('km' => $distancia, 'min' => $tiempo);
+}
+
 $method = $_SERVER['REQUEST_METHOD'];
 
 switch ($method) {
@@ -43,7 +88,7 @@ switch ($method) {
             $params[] = $like;
         }
 
-        $sql = "SELECT p.id, p.numero, p.cliente, p.telefono, p.direccion, p.notas, p.total, p.estado, p.lat, p.lng, p.created_at as fecha
+        $sql = "SELECT p.id, p.numero, p.cliente, p.telefono, p.direccion, p.notas, p.total, p.estado, p.lat, p.lng, p.distancia_km, p.tiempo_min, p.created_at as fecha
                 FROM pedidos p"
              . (count($where) ? ' WHERE ' . implode(' AND ', $where) : '')
              . " ORDER BY p.id DESC LIMIT 100";
@@ -96,7 +141,10 @@ switch ($method) {
             break;
         }
 
-        echo json_encode(['ok' => true, 'id' => $id, 'estado' => $estado]);
+        // Recalcular distancia al guardar
+        $distancia = calcularDistanciaPedido($pdo, $id);
+
+        echo json_encode(['ok' => true, 'id' => $id, 'estado' => $estado, 'distancia_km' => $distancia]);
         break;
 
     // ---- DELETE: eliminar pedido ----
