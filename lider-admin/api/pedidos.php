@@ -9,7 +9,7 @@
  * PUT    /lider-admin/api/pedidos.php
  *   Cambia el estado de un pedido y recalcula distancia/tiempo vía Google Distance Matrix.
  *   Body JSON: { id, estado }
- *   Estados válidos: recibido | preparando | listo | entregado | cancelado
+ *   Estados válidos: pendiente | preparando | listo | entregado | cancelado
  *
  * DELETE /lider-admin/api/pedidos.php?id={id}
  *   Elimina un pedido y sus ítems en una transacción.
@@ -143,7 +143,7 @@ switch ($method) {
         $id     = isset($body['id'])     ? (int)$body['id']       : 0;
         $estado = isset($body['estado']) ? trim($body['estado'])  : '';
 
-        $estados_validos = ['recibido', 'preparando', 'listo', 'entregado', 'cancelado'];
+        $estados_validos = ['pendiente', 'preparando', 'listo', 'entregado', 'cancelado'];
 
         if (!$id || !in_array($estado, $estados_validos)) {
             http_response_code(400);

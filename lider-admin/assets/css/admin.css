@@ -130,6 +130,7 @@ tbody tr:hover { background: #fafafa; }
 .badge-cat   { background: #eff6ff; color: #3b82f6; }
 .badge-stock { background: #dcfce7; color: #16a34a; }
 .badge-nostock { background: #fef2f2; color: #dc2626; }
+.badge-comprometido { background: #fef9c3; color: #a16207; }
 
 /* ===== Actions column ===== */
 .actions { display: flex; gap: 4px; }
@@ -393,6 +394,20 @@ tbody tr:hover { background: #fafafa; }
   .ped-card-meta { flex-direction: column; gap: 2px; }
   .ped-card-footer { flex-wrap: wrap; gap: 8px; }
   .ped-estado-btns { flex-direction: column; }
+}
+
+/* ===== Compras — item rows ===== */
+.comp-item-row {
+  display: flex; gap: 8px; align-items: center; margin-bottom: 6px;
+}
+.comp-item-row select.comp-item-prod {
+  flex: 2; min-width: 0;
+}
+.comp-item-row .comp-item-precio {
+  flex: 0.8; min-width: 70px;
+}
+.comp-item-row .comp-item-cant {
+  width: 56px; flex-shrink: 0; text-align: center;
 }
 
 /* ===== Configuración ===== */

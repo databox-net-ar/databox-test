@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Lider Admin — Productos</title>
-  <link rel="stylesheet" href="assets/css/admin.css">
+  <link rel="stylesheet" href="assets/css/admin.css?v=<?= time() ?>">
   <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyD5WChZRhfb478oxJr7kUBwufoe-G_5SBg"></script>
 </head>
 <body>
@@ -28,6 +28,9 @@
       </a>
       <a class="nav-item" href="#" onclick="cambiarSeccion('clientes', this)" data-section="clientes">
         <span class="nav-icon">👥</span> Clientes
+      </a>
+      <a class="nav-item" href="#" onclick="cambiarSeccion('compras', this)" data-section="compras">
+        <span class="nav-icon">🛍️</span> Compras
       </a>
       <a class="nav-item" href="#" onclick="cambiarSeccion('proveedores', this)" data-section="proveedores">
         <span class="nav-icon">🏭</span> Proveedores
@@ -145,8 +148,8 @@
             <span class="stat-value orange" id="pedStatTotal">—</span>
           </div>
           <div class="stat-card">
-            <span class="stat-label">Recibidos</span>
-            <span class="stat-value" style="color:#3b82f6" id="pedStatRecibido">—</span>
+            <span class="stat-label">Pendientes</span>
+            <span class="stat-value" style="color:#3b82f6" id="pedStatPendiente">—</span>
           </div>
           <div class="stat-card">
             <span class="stat-label">Preparando</span>
@@ -168,7 +171,7 @@
             <input class="search-input" type="text" placeholder="🔍 Buscar pedido, cliente..." oninput="onSearchPedido(this.value)">
             <select id="filterEstado" onchange="onFiltroEstado(this.value)">
               <option value="todos">Todos los estados</option>
-              <option value="recibido">📥 Recibido</option>
+              <option value="pendiente">⏳ Pendiente</option>
               <option value="preparando">🔧 Preparando</option>
               <option value="listo">✅ Listo</option>
               <option value="entregado">🚚 Entregado</option>
@@ -310,6 +313,53 @@
 
       </div><!-- /seccionProveedores -->
 
+      <!-- ========== SECCIÓN COMPRAS ========== -->
+      <div class="section" id="seccionCompras" style="display:none">
+
+        <!-- Stats compras -->
+        <div class="stats-bar">
+          <div class="stat-card">
+            <span class="stat-label">Total compras</span>
+            <span class="stat-value orange" id="compStatTotal">—</span>
+          </div>
+          <div class="stat-card">
+            <span class="stat-label">Pendientes</span>
+            <span class="stat-value" style="color:#3b82f6" id="compStatPendiente">—</span>
+          </div>
+          <div class="stat-card">
+            <span class="stat-label">Confirmadas</span>
+            <span class="stat-value" style="color:var(--warn)" id="compStatConfirmada">—</span>
+          </div>
+          <div class="stat-card">
+            <span class="stat-label">Gasto total</span>
+            <span class="stat-value orange" id="compStatMonto">—</span>
+          </div>
+        </div>
+
+        <!-- Toolbar compras -->
+        <div class="toolbar">
+          <div class="toolbar-left">
+            <input class="search-input" type="text" placeholder="🔍 Buscar compra, proveedor..." oninput="onSearchCompra(this.value)">
+            <select id="filterEstadoCompra" onchange="onFiltroEstadoCompra(this.value)">
+              <option value="todos">Todos los estados</option>
+              <option value="pendiente">⏳ Pendiente</option>
+              <option value="confirmada">✅ Confirmada</option>
+              <option value="cancelada">❌ Cancelada</option>
+            </select>
+          </div>
+          <div class="toolbar-right">
+            <button class="btn btn-primary" onclick="abrirNuevaCompra()">+ Nueva compra</button>
+            <button class="btn btn-ghost" onclick="cargarCompras()">🔄 Actualizar</button>
+          </div>
+        </div>
+
+        <!-- Lista de compras -->
+        <div id="comprasLista">
+          <div class="spinner-row" style="text-align:center;padding:40px"><div class="spin"></div></div>
+        </div>
+
+      </div><!-- /seccionCompras -->
+
       <!-- ========== SECCIÓN EVENTOS ========== -->
       <div class="section" id="seccionEventos" style="display:none">
 
@@ -403,15 +453,24 @@
           <label>Emoji</label>
           <input type="text" id="fEmoji" placeholder="🍎" maxlength="4">
         </div>
-        <div class="form-group" style="justify-content:flex-end">
-          <label>Stock disponible</label>
-          <div class="toggle-row">
-            <label class="toggle">
-              <input type="checkbox" id="fStock" checked>
-              <span class="toggle-slider"></span>
-            </label>
-            <span id="stockLabel" style="font-size:.85rem;color:var(--muted)">Con stock</span>
-          </div>
+      </div>
+
+      <div class="form-row" style="gap:8px">
+        <div class="form-group">
+          <label>Stock actual</label>
+          <input type="number" id="fStockActual" value="1" min="0" step="1">
+        </div>
+        <div class="form-group">
+          <label>Stock comprometido</label>
+          <input type="number" id="fStockComprometido" value="0" min="0" step="1">
+        </div>
+        <div class="form-group">
+          <label>Stock mínimo</label>
+          <input type="number" id="fStockMinimo" value="0" min="0" step="1">
+        </div>
+        <div class="form-group">
+          <label>Stock recomendado</label>
+          <input type="number" id="fStockRecomendado" value="3" min="0" step="1">
         </div>
       </div>
 
@@ -627,6 +686,81 @@
   </div>
 </div>
 
+<!-- ===== Modal Nueva Compra ===== -->
+<div class="modal-backdrop" id="compModalBackdrop" onclick="if(event.target===this)cerrarCompModal()">
+  <div class="modal" style="max-width:620px">
+    <div class="modal-header">
+      <div class="modal-title">Nueva compra</div>
+      <button class="btn btn-ghost" onclick="cerrarCompModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <!-- Proveedor -->
+      <div class="form-group">
+        <label>Proveedor *</label>
+        <select id="compProveedor" onchange="onCompProveedorChange()">
+          <option value="">— Seleccionar proveedor —</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Notas</label>
+        <input type="text" id="compNotas" placeholder="Observaciones (opcional)">
+      </div>
+      <!-- Items -->
+      <div class="form-group">
+        <label>Productos</label>
+        <div id="compItemsWrap">
+          <!-- items dinámicos -->
+        </div>
+        <button type="button" class="btn btn-ghost" onclick="agregarItemCompra()" style="margin-top:8px">+ Agregar producto</button>
+      </div>
+      <!-- Total -->
+      <div style="text-align:right;font-weight:700;font-size:1.1rem;margin-top:10px">
+        Total: $<span id="compTotal">0</span>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="cerrarCompModal()">Cancelar</button>
+      <button class="btn btn-primary" onclick="guardarCompra()">Crear compra</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== Modal Compra Detalle ===== -->
+<div class="modal-backdrop" id="compDetModalBackdrop" onclick="if(event.target===this)cerrarCompDetModal()">
+  <div class="modal" style="max-width:560px">
+    <div class="modal-header">
+      <div>
+        <div class="modal-title" id="compDetTitle">Compra</div>
+        <div style="font-size:.78rem;color:var(--muted)" id="compDetFecha"></div>
+      </div>
+      <button class="btn btn-ghost" onclick="cerrarCompDetModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="ped-detail-section">
+        <div class="ped-detail-label">Proveedor</div>
+        <div id="compDetProveedor" style="font-weight:600"></div>
+        <div id="compDetNotas" style="font-size:.85rem;color:var(--muted);font-style:italic;display:none"></div>
+      </div>
+      <div class="ped-detail-section">
+        <div class="ped-detail-label">Productos</div>
+        <div id="compDetItems"></div>
+      </div>
+      <div class="ped-detail-total">
+        <span>Total</span>
+        <span id="compDetTotal" style="font-weight:700;font-size:1.1rem"></span>
+      </div>
+      <div class="ped-detail-section">
+        <div class="ped-detail-label">Estado</div>
+        <div class="ped-estado-btns" id="compEstadoBtns"></div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-danger" onclick="eliminarCompra()" style="margin-right:auto">🗑️ Eliminar</button>
+      <button class="btn btn-ghost" onclick="cerrarCompDetModal()">Cerrar</button>
+    </div>
+  </div>
+</div>
+
 <!-- ===== Confirm dialog ===== -->
 <div class="confirm-backdrop" id="confirmBackdrop">
   <div class="confirm-box">
@@ -642,13 +776,8 @@
 <!-- ===== Toast ===== -->
 <div class="toast" id="toast"></div>
 
-<script src="assets/js/admin.js"></script>
+<script src="assets/js/admin.js?v=<?= time() ?>"></script>
 <script>
-  // Toggle label del stock
-  document.getElementById('fStock').addEventListener('change', function() {
-    document.getElementById('stockLabel').textContent = this.checked ? 'Con stock' : 'Sin stock';
-  });
-
   // Fecha en topbar
   document.getElementById('topbarMeta').textContent =
     new Date().toLocaleDateString('es-AR', { weekday:'long', day:'numeric', month:'long', year:'numeric' });

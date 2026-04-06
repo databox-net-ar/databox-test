@@ -123,7 +123,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         $stmt = $pdo->prepare("
             INSERT INTO pedidos (numero, cliente_id, cliente, telefono, direccion, notas, total, estado, lat, lng, distancia_km, tiempo_min)
-            VALUES (?, ?, ?, ?, ?, ?, ?, 'recibido', ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?, 'pendiente', ?, ?, ?, ?)
         ");
         $stmt->execute([
             $numero,
@@ -144,14 +144,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             INSERT INTO pedido_items (pedido_id, producto_id, nombre, precio, cantidad)
             VALUES (?, ?, ?, ?, ?)
         ");
+        $stmtStock = $pdo->prepare("
+            UPDATE productos
+            SET stock_actual       = GREATEST(0, stock_actual - ?),
+                stock_comprometido = stock_comprometido + ?
+            WHERE id = ? AND stock_actual >= ?
+        ");
         foreach ($body['items'] as $item) {
+            $productoId = $item['id'] ?? null;
+            $cantidad   = (int)($item['cantidad'] ?? 1);
             $stmtItem->execute([
                 $pedidoId,
-                $item['id'] ?? null,
+                $productoId,
                 $item['nombre'],
                 $item['precio'],
-                $item['cantidad'],
+                $cantidad,
             ]);
+            if ($productoId) {
+                $stmtStock->execute([$cantidad, $cantidad, $productoId, $cantidad]);
+            }
         }
 
         // Guardar ubicación GPS en la ficha del cliente
@@ -172,7 +183,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             'notas'     => $body['notas'] ?? '',
             'items'     => $body['items'],
             'total'     => $total,
-            'estado'    => 'recibido',
+            'estado'    => 'pendiente',
         ];
 
         echo json_encode(['ok' => true, 'pedido' => $pedido]);

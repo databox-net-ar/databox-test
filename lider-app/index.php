@@ -10,7 +10,7 @@
   <meta name="description" content="Pedidos de comestibles rápido y fácil">
   <title>Lider Online</title>
   <link rel="manifest" href="manifest.json">
-  <link rel="stylesheet" href="assets/css/app.css">
+  <link rel="stylesheet" href="assets/css/app.css?v=<?= time() ?>">
 </head>
 <body>
 
@@ -72,6 +72,25 @@
   <div class="section-title">Mi perfil</div>
   <div id="perfilContenido">
     <div class="spinner"><div class="spin"></div></div>
+  </div>
+</div>
+
+<!-- ===== Product Detail Modal ===== -->
+<div class="modal-wrap" id="productModal">
+  <div class="modal-backdrop" onclick="closeProductModal()"></div>
+  <div class="modal product-modal">
+    <div class="modal-handle"></div>
+    <button class="btn-close product-modal-close" onclick="closeProductModal()">✕</button>
+    <div class="product-detail-img">
+      <img id="pdImg" src="" alt="" width="160" height="160">
+    </div>
+    <div class="product-detail-body">
+      <div class="product-detail-name" id="pdName"></div>
+      <div class="product-detail-unit" id="pdUnit"></div>
+      <div class="product-detail-price" id="pdPrice"></div>
+      <div class="product-detail-stock" id="pdStock"></div>
+      <div class="product-detail-actions" id="pdActions"></div>
+    </div>
   </div>
 </div>
 
@@ -237,6 +256,6 @@
   </button>
 </nav>
 
-<script src="assets/js/app.js"></script>
+<script src="assets/js/app.js?v=<?= time() ?>"></script>
 </body>
 </html>

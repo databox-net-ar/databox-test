@@ -59,7 +59,10 @@ try {
             emoji       VARCHAR(10)  DEFAULT '📦',
             imagen      VARCHAR(500) DEFAULT '',
             unidad      VARCHAR(10)  DEFAULT 'u',
-            stock       TINYINT(1)   NOT NULL DEFAULT 1,
+            stock_actual      INT NOT NULL DEFAULT 1,
+            stock_comprometido INT NOT NULL DEFAULT 0,
+            stock_minimo      INT NOT NULL DEFAULT 0,
+            stock_recomendado INT NOT NULL DEFAULT 3,
             created_at  TIMESTAMP    DEFAULT CURRENT_TIMESTAMP,
             updated_at  TIMESTAMP    DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
@@ -169,6 +172,48 @@ try {
     $ok = false;
 }
 
+try {
+    $pdo->exec("
+        CREATE TABLE IF NOT EXISTS compras (
+            id            INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+            numero        VARCHAR(20)  NOT NULL UNIQUE,
+            proveedor_id  INT UNSIGNED DEFAULT NULL,
+            proveedor     VARCHAR(120) NOT NULL,
+            telefono      VARCHAR(40)  DEFAULT '',
+            direccion     VARCHAR(255) DEFAULT '',
+            notas         TEXT,
+            total         DECIMAL(12,2) NOT NULL DEFAULT 0,
+            estado        VARCHAR(30)  NOT NULL DEFAULT 'pendiente',
+            created_at    TIMESTAMP    DEFAULT CURRENT_TIMESTAMP,
+            updated_at    TIMESTAMP    DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            FOREIGN KEY (proveedor_id) REFERENCES proveedores(id) ON DELETE SET NULL
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+    ");
+    msg("Tabla <b>compras</b> creada/verificada", 'ok');
+} catch (Exception $e) {
+    msg("Error creando tabla compras: " . htmlspecialchars($e->getMessage()), 'error');
+    $ok = false;
+}
+
+try {
+    $pdo->exec("
+        CREATE TABLE IF NOT EXISTS compra_items (
+            id          INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+            compra_id   INT UNSIGNED NOT NULL,
+            producto_id INT UNSIGNED DEFAULT NULL,
+            nombre      VARCHAR(120) NOT NULL,
+            precio      DECIMAL(10,2) NOT NULL,
+            cantidad    INT UNSIGNED NOT NULL DEFAULT 1,
+            FOREIGN KEY (compra_id)   REFERENCES compras(id)   ON DELETE CASCADE,
+            FOREIGN KEY (producto_id) REFERENCES productos(id) ON DELETE SET NULL
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+    ");
+    msg("Tabla <b>compra_items</b> creada/verificada", 'ok');
+} catch (Exception $e) {
+    msg("Error creando tabla compra_items: " . htmlspecialchars($e->getMessage()), 'error');
+    $ok = false;
+}
+
 // ── 1b. Migraciones: agregar columnas faltantes ──────────────────
 if ($ok) {
     // lat, lng en pedidos
@@ -214,6 +259,33 @@ if ($ok) {
     } catch (Exception $e) {
         $pdo->exec("ALTER TABLE productos ADD COLUMN peso_pieza DECIMAL(6,3) DEFAULT NULL");
         msg("Columna <b>peso_pieza</b> agregada a productos", 'ok');
+    }
+
+    // stock_actual, stock_minimo, stock_recomendado en productos
+    try {
+        $pdo->query("SELECT stock_actual FROM productos LIMIT 1");
+        msg("Columnas <b>stock_actual, stock_minimo, stock_recomendado</b> ya existen en productos", 'info');
+    } catch (Exception $e) {
+        $pdo->exec("ALTER TABLE productos ADD COLUMN stock_actual INT NOT NULL DEFAULT 1, ADD COLUMN stock_minimo INT NOT NULL DEFAULT 0, ADD COLUMN stock_recomendado INT NOT NULL DEFAULT 3");
+        msg("Columnas <b>stock_actual, stock_minimo, stock_recomendado</b> agregadas a productos", 'ok');
+    }
+
+    // stock_comprometido en productos
+    try {
+        $pdo->query("SELECT stock_comprometido FROM productos LIMIT 1");
+        msg("Columna <b>stock_comprometido</b> ya existe en productos", 'info');
+    } catch (Exception $e) {
+        $pdo->exec("ALTER TABLE productos ADD COLUMN stock_comprometido INT NOT NULL DEFAULT 0 AFTER stock_actual");
+        msg("Columna <b>stock_comprometido</b> agregada a productos", 'ok');
+    }
+
+    // Eliminar columna stock obsoleta (ahora se usa stock_actual)
+    try {
+        $pdo->query("SELECT stock FROM productos LIMIT 1");
+        $pdo->exec("ALTER TABLE productos DROP COLUMN stock");
+        msg("Columna obsoleta <b>stock</b> eliminada de productos", 'ok');
+    } catch (Exception $e) {
+        msg("Columna <b>stock</b> ya no existe en productos", 'info');
     }
 
     // correo en clientes
@@ -313,7 +385,7 @@ if ($ok) {
         ];
 
         $stmt = $pdo->prepare("
-            INSERT INTO productos (nombre, precio, categoria, emoji, imagen, unidad, stock)
+            INSERT INTO productos (nombre, precio, categoria, emoji, imagen, unidad, stock_actual)
             VALUES (?, ?, ?, ?, ?, ?, ?)
         ");
 

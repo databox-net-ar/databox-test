@@ -6,6 +6,7 @@ const PED_API = 'api/pedidos.php';
 const CFG_API = 'api/configuracion.php';
 const CLI_API = 'api/clientes.php';
 const PROV_API = 'api/proveedores.php';
+const COMP_API = 'api/compras.php';
 
 let CATEGORIAS = [];
 
@@ -58,8 +59,8 @@ async function renderStats() {
   const all = await apiGet({});
   const lista = all.data || [];
   const total   = lista.length;
-  const conStock = lista.filter(p => p.stock).length;
-  const sinStock = lista.filter(p => !p.stock).length;
+  const conStock = lista.filter(p => p.stock_actual > 0).length;
+  const sinStock = lista.filter(p => p.stock_actual <= 0).length;
   document.getElementById('statTotal').textContent   = total;
   document.getElementById('statStock').textContent   = conStock;
   document.getElementById('statSinStock').textContent = sinStock;
@@ -84,10 +85,16 @@ function renderTabla() {
       <td><span class="badge badge-cat">${esc(p.categoria)}</span></td>
       <td>$${Number(p.precio).toLocaleString('es-AR')}</td>
       <td>${esc(p.unidad)}</td>
-      <td>${p.stock
-        ? '<span class="badge badge-stock">Con stock</span>'
-        : '<span class="badge badge-nostock">Sin stock</span>'
-      }</td>
+      <td>
+        ${p.stock_actual > 0
+          ? '<span class="badge badge-stock">Stock: ' + p.stock_actual + '</span>'
+          : '<span class="badge badge-nostock">Sin stock</span>'
+        }
+        ${p.stock_comprometido > 0
+          ? '<span class="badge badge-comprometido">Comp: ' + p.stock_comprometido + '</span>'
+          : ''
+        }
+      </td>
       <td>
         <div class="actions">
           <button class="btn-icon-sm" title="Editar" onclick="abrirEditar(${p.id})">✏️</button>
@@ -133,7 +140,10 @@ function abrirEditar(id) {
   document.getElementById('fImagen').value    = p.imagen || '';
   document.getElementById('fUnidad').value    = p.unidad;
   document.getElementById('fPesoPieza').value  = p.peso_pieza || '';
-  document.getElementById('fStock').checked   = p.stock;
+  document.getElementById('fStockActual').value       = p.stock_actual ?? 1;
+  document.getElementById('fStockComprometido').value = p.stock_comprometido ?? 0;
+  document.getElementById('fStockMinimo').value       = p.stock_minimo ?? 0;
+  document.getElementById('fStockRecomendado').value  = p.stock_recomendado ?? 3;
   togglePesoPieza();
   actualizarPreview();
   document.getElementById('modalBackdrop').classList.add('open');
@@ -147,7 +157,10 @@ function limpiarForm() {
   ['fNombre','fPrecio','fEmoji','fImagen','fPesoPieza'].forEach(id => document.getElementById(id).value = '');
   document.getElementById('fCategoria').value = 'frutas';
   document.getElementById('fUnidad').value    = 'kg';
-  document.getElementById('fStock').checked   = true;
+  document.getElementById('fStockActual').value       = 1;
+  document.getElementById('fStockComprometido').value = 0;
+  document.getElementById('fStockMinimo').value       = 0;
+  document.getElementById('fStockRecomendado').value  = 3;
   document.getElementById('fArchivo').value   = '';
   togglePesoPieza();
   actualizarPreview();
@@ -258,13 +271,16 @@ async function guardarProducto() {
   const emoji     = document.getElementById('fEmoji').value.trim();
   const imagen    = document.getElementById('fImagen').value.trim();
   const unidad    = document.getElementById('fUnidad').value;
-  const stock     = document.getElementById('fStock').checked;
+  const stock_actual       = parseInt(document.getElementById('fStockActual').value) || 0;
+  const stock_comprometido = parseInt(document.getElementById('fStockComprometido').value) || 0;
+  const stock_minimo       = parseInt(document.getElementById('fStockMinimo').value) || 0;
+  const stock_recomendado  = parseInt(document.getElementById('fStockRecomendado').value) || 3;
   const peso_pieza = unidad === 'kg' ? (document.getElementById('fPesoPieza').value || null) : null;
 
   if (!nombre) { showToast('El nombre es obligatorio', true); return; }
   if (isNaN(precio) || precio < 0) { showToast('Precio inválido', true); return; }
 
-  const body = { nombre, precio, categoria, emoji, imagen, unidad, stock, peso_pieza };
+  const body = { nombre, precio, categoria, emoji, imagen, unidad, peso_pieza, stock_actual, stock_comprometido, stock_minimo, stock_recomendado };
   let res;
   if (editandoId) {
     body.id = editandoId;
@@ -359,6 +375,10 @@ function cambiarSeccion(seccion, navEl) {
     document.getElementById('seccionProveedores').style.display = '';
     topbar.textContent = 'Gestión de Proveedores';
     cargarProveedores();
+  } else if (seccion === 'compras') {
+    document.getElementById('seccionCompras').style.display = '';
+    topbar.textContent = 'Gestión de Compras';
+    cargarCompras();
   } else if (seccion === 'eventos') {
     document.getElementById('seccionEventos').style.display = '';
     topbar.textContent = 'Registros de Eventos';
@@ -535,7 +555,7 @@ const catModal = {
 
 /* ===== Pedidos ===== */
 const ESTADOS = {
-  recibido:   { label: 'Recibido',   emoji: '📥', color: '#3b82f6' },
+  pendiente:  { label: 'Pendiente',  emoji: '⏳', color: '#3b82f6' },
   preparando: { label: 'Preparando', emoji: '🔧', color: '#f59e0b' },
   listo:      { label: 'Listo',      emoji: '✅', color: '#22c55e' },
   entregado:  { label: 'Entregado',  emoji: '🚚', color: '#16a34a' },
@@ -585,7 +605,7 @@ function renderPedStats(stats) {
     monto += stats[key].monto;
   }
   document.getElementById('pedStatTotal').textContent = total;
-  document.getElementById('pedStatRecibido').textContent = (stats.recibido ? stats.recibido.cant : 0);
+  document.getElementById('pedStatPendiente').textContent = (stats.pendiente ? stats.pendiente.cant : 0);
   document.getElementById('pedStatPreparando').textContent = (stats.preparando ? stats.preparando.cant : 0);
   document.getElementById('pedStatEntregado').textContent = (stats.entregado ? stats.entregado.cant : 0);
   document.getElementById('pedStatMonto').textContent = '$' + monto.toLocaleString('es-AR');
@@ -598,7 +618,7 @@ function renderPedidos() {
     return;
   }
   lista.innerHTML = pedidos.map(function(p) {
-    var est = ESTADOS[p.estado] || ESTADOS.recibido;
+    var est = ESTADOS[p.estado] || ESTADOS.pendiente;
     var itemCount = 0;
     for (var i = 0; i < (p.items || []).length; i++) {
       itemCount += (p.items[i].cantidad || 1);
@@ -633,7 +653,7 @@ function abrirPedido(id) {
   }
   if (!pedidoActual) return;
 
-  var est = ESTADOS[pedidoActual.estado] || ESTADOS.recibido;
+  var est = ESTADOS[pedidoActual.estado] || ESTADOS.pendiente;
   document.getElementById('pedModalTitle').textContent = pedidoActual.numero;
   document.getElementById('pedModalFecha').textContent = pedidoActual.fecha ? new Date(pedidoActual.fecha).toLocaleString('es-AR') : '';
 
@@ -677,7 +697,7 @@ function abrirPedido(id) {
 
   // Estado buttons
   var btnsHtml = '';
-  var keys = ['recibido', 'preparando', 'listo', 'entregado', 'cancelado'];
+  var keys = ['pendiente', 'preparando', 'listo', 'entregado', 'cancelado'];
   for (var k = 0; k < keys.length; k++) {
     var key = keys[k];
     var e = ESTADOS[key];
@@ -1023,6 +1043,322 @@ function eliminarProveedor(id, nombre) {
       if (data.ok) {
         showToast('Proveedor eliminado');
         cargarProveedores();
+      } else {
+        showToast(data.error || 'Error al eliminar', true);
+      }
+    } catch (e) {
+      showToast('Error de conexión', true);
+    }
+  };
+  document.getElementById('confirmBackdrop').classList.add('open');
+}
+
+/* ===== Compras ===== */
+const ESTADOS_COMPRA = {
+  pendiente:  { label: 'Pendiente',  emoji: '⏳', color: '#3b82f6' },
+  confirmada: { label: 'Confirmada', emoji: '✅', color: '#f59e0b' },
+  cancelada:  { label: 'Cancelada',  emoji: '❌', color: '#ef4444' },
+};
+
+var compras = [];
+var filtroEstadoCompra = 'todos';
+var filtroBusqCompra = '';
+var compraActual = null;
+var compSearchTimer = null;
+var compItemCounter = 0;
+
+function onSearchCompra(val) {
+  clearTimeout(compSearchTimer);
+  compSearchTimer = setTimeout(function() { filtroBusqCompra = val; cargarCompras(); }, 300);
+}
+function onFiltroEstadoCompra(val) {
+  filtroEstadoCompra = val;
+  cargarCompras();
+}
+
+async function cargarCompras() {
+  var params = [];
+  if (filtroEstadoCompra && filtroEstadoCompra !== 'todos') params.push('estado=' + encodeURIComponent(filtroEstadoCompra));
+  if (filtroBusqCompra) params.push('q=' + encodeURIComponent(filtroBusqCompra));
+  var qs = params.length ? '?' + params.join('&') : '';
+
+  try {
+    var res = await fetch(COMP_API + qs);
+    var data = await res.json();
+    if (data.ok) {
+      compras = data.data || [];
+      renderCompStats(data.stats || {});
+      renderCompras();
+    } else {
+      showToast(data.error || 'Error al cargar compras', true);
+    }
+  } catch (e) {
+    showToast('Error de conexión al cargar compras', true);
+  }
+}
+
+function renderCompStats(stats) {
+  var total = 0, monto = 0;
+  for (var key in stats) {
+    total += stats[key].cant;
+    monto += stats[key].monto;
+  }
+  document.getElementById('compStatTotal').textContent = total;
+  document.getElementById('compStatPendiente').textContent = (stats.pendiente ? stats.pendiente.cant : 0);
+  document.getElementById('compStatConfirmada').textContent = (stats.confirmada ? stats.confirmada.cant : 0);
+  document.getElementById('compStatMonto').textContent = '$' + monto.toLocaleString('es-AR');
+}
+
+function renderCompras() {
+  var lista = document.getElementById('comprasLista');
+  if (!compras.length) {
+    lista.innerHTML = '<div class="table-empty">No hay compras para los filtros aplicados</div>';
+    return;
+  }
+  lista.innerHTML = compras.map(function(c) {
+    var est = ESTADOS_COMPRA[c.estado] || ESTADOS_COMPRA.pendiente;
+    var itemCount = 0;
+    for (var i = 0; i < (c.items || []).length; i++) {
+      itemCount += (c.items[i].cantidad || 1);
+    }
+    var fecha = c.fecha ? new Date(c.fecha).toLocaleString('es-AR', { day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit' }) : '';
+    return '<div class="ped-card" onclick="abrirCompra(' + c.id + ')">' +
+      '<div class="ped-card-head">' +
+        '<span class="ped-card-num">' + esc(c.numero) + '</span>' +
+        '<span class="ped-card-badge" style="background:' + est.color + '15;color:' + est.color + '">' + est.emoji + ' ' + est.label + '</span>' +
+      '</div>' +
+      '<div class="ped-card-body">' +
+        '<div class="ped-card-cliente">🏭 ' + esc(c.proveedor) + '</div>' +
+        '<div class="ped-card-footer">' +
+          '<span class="ped-card-items">' + itemCount + ' producto' + (itemCount !== 1 ? 's' : '') + '</span>' +
+          '<span class="ped-card-total">$' + Number(c.total).toLocaleString('es-AR') + '</span>' +
+          '<span class="ped-card-fecha">' + fecha + '</span>' +
+        '</div>' +
+      '</div>' +
+    '</div>';
+  }).join('');
+}
+
+// ---- Modal nueva compra ----
+
+async function abrirNuevaCompra() {
+  compItemCounter = 0;
+  document.getElementById('compItemsWrap').innerHTML = '';
+  document.getElementById('compNotas').value = '';
+  document.getElementById('compTotal').textContent = '0';
+
+  // Cargar proveedores en select
+  var sel = document.getElementById('compProveedor');
+  sel.innerHTML = '<option value="">— Seleccionar proveedor —</option>';
+  try {
+    var res = await fetch(PROV_API);
+    var data = await res.json();
+    if (data.ok) {
+      (data.data || []).forEach(function(p) {
+        sel.innerHTML += '<option value="' + p.id + '" data-nombre="' + esc(p.nombre) + '">' + esc(p.nombre) + '</option>';
+      });
+    }
+  } catch (e) {}
+
+  agregarItemCompra();
+  document.getElementById('compModalBackdrop').classList.add('open');
+}
+
+function onCompProveedorChange() {
+  // placeholder for future logic
+}
+
+function agregarItemCompra() {
+  compItemCounter++;
+  var idx = compItemCounter;
+  var wrap = document.getElementById('compItemsWrap');
+  var row = document.createElement('div');
+  row.className = 'comp-item-row';
+  row.id = 'compItem' + idx;
+  row.innerHTML =
+    '<select class="comp-item-prod" id="compItemProd' + idx + '" onchange="onCompItemProdChange(' + idx + ')">' +
+      '<option value="">— Producto —</option>' +
+    '</select>' +
+    '<input type="number" class="comp-item-precio" id="compItemPrecio' + idx + '" placeholder="Precio" min="0" step="0.01" oninput="calcTotalCompra()">' +
+    '<input type="number" class="comp-item-cant" id="compItemCant' + idx + '" value="1" min="1" oninput="calcTotalCompra()">' +
+    '<button type="button" class="btn-icon-sm" onclick="quitarItemCompra(' + idx + ')" title="Quitar">✕</button>';
+  wrap.appendChild(row);
+
+  // Poblar select de productos
+  var sel = row.querySelector('select');
+  productos.forEach(function(p) {
+    sel.innerHTML += '<option value="' + p.id + '" data-nombre="' + esc(p.nombre) + '" data-precio="' + p.precio + '">' + esc(p.nombre) + '</option>';
+  });
+}
+
+function onCompItemProdChange(idx) {
+  var sel = document.getElementById('compItemProd' + idx);
+  var opt = sel.options[sel.selectedIndex];
+  if (opt && opt.dataset.precio) {
+    document.getElementById('compItemPrecio' + idx).value = opt.dataset.precio;
+    calcTotalCompra();
+  }
+}
+
+function quitarItemCompra(idx) {
+  var el = document.getElementById('compItem' + idx);
+  if (el) el.remove();
+  calcTotalCompra();
+}
+
+function calcTotalCompra() {
+  var rows = document.getElementById('compItemsWrap').querySelectorAll('.comp-item-row');
+  var total = 0;
+  rows.forEach(function(row) {
+    var precio = parseFloat(row.querySelector('.comp-item-precio').value) || 0;
+    var cant   = parseInt(row.querySelector('.comp-item-cant').value) || 1;
+    total += precio * cant;
+  });
+  document.getElementById('compTotal').textContent = total.toLocaleString('es-AR');
+}
+
+function cerrarCompModal() {
+  document.getElementById('compModalBackdrop').classList.remove('open');
+}
+
+async function guardarCompra() {
+  var sel = document.getElementById('compProveedor');
+  var provId = sel.value;
+  var provNombre = provId ? sel.options[sel.selectedIndex].dataset.nombre : '';
+  if (!provId) { showToast('Seleccioná un proveedor', true); return; }
+
+  var items = [];
+  var rows = document.getElementById('compItemsWrap').querySelectorAll('.comp-item-row');
+  rows.forEach(function(row) {
+    var prodSel = row.querySelector('.comp-item-prod');
+    var prodOpt = prodSel.options[prodSel.selectedIndex];
+    var nombre = (prodOpt && prodOpt.dataset.nombre) ? prodOpt.dataset.nombre : prodSel.value;
+    var prodId = prodSel.value ? parseInt(prodSel.value) : null;
+    var precio = parseFloat(row.querySelector('.comp-item-precio').value) || 0;
+    var cant   = parseInt(row.querySelector('.comp-item-cant').value) || 1;
+    if (nombre || prodId) {
+      items.push({ producto_id: prodId, nombre: nombre, precio: precio, cantidad: cant });
+    }
+  });
+
+  if (!items.length) { showToast('Agregá al menos un producto', true); return; }
+
+  var body = {
+    proveedor_id: parseInt(provId),
+    proveedor: provNombre,
+    notas: document.getElementById('compNotas').value.trim(),
+    items: items,
+  };
+
+  try {
+    var res = await fetch(COMP_API, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    var data = await res.json();
+    if (data.ok) {
+      cerrarCompModal();
+      showToast('Compra ' + data.numero + ' creada');
+      cargarCompras();
+    } else {
+      showToast(data.error || 'Error al crear compra', true);
+    }
+  } catch (e) {
+    showToast('Error de conexión', true);
+  }
+}
+
+// ---- Modal detalle compra ----
+
+function abrirCompra(id) {
+  compraActual = null;
+  for (var i = 0; i < compras.length; i++) {
+    if (compras[i].id == id) { compraActual = compras[i]; break; }
+  }
+  if (!compraActual) return;
+
+  document.getElementById('compDetTitle').textContent = compraActual.numero;
+  document.getElementById('compDetFecha').textContent = compraActual.fecha ? new Date(compraActual.fecha).toLocaleString('es-AR') : '';
+  document.getElementById('compDetProveedor').textContent = '🏭 ' + compraActual.proveedor;
+
+  var notasEl = document.getElementById('compDetNotas');
+  if (compraActual.notas) {
+    notasEl.textContent = '📝 ' + compraActual.notas;
+    notasEl.style.display = '';
+  } else {
+    notasEl.style.display = 'none';
+  }
+
+  var itemsHtml = '';
+  var items = compraActual.items || [];
+  for (var i = 0; i < items.length; i++) {
+    var it = items[i];
+    var subtotal = (it.precio * (it.cantidad || 1));
+    itemsHtml += '<div class="ped-item-row">' +
+      '<span class="ped-item-name">' + esc(it.nombre) + ' ×' + (it.cantidad || 1) + '</span>' +
+      '<span class="ped-item-price">$' + Number(subtotal).toLocaleString('es-AR') + '</span>' +
+    '</div>';
+  }
+  document.getElementById('compDetItems').innerHTML = itemsHtml;
+  document.getElementById('compDetTotal').textContent = '$' + Number(compraActual.total).toLocaleString('es-AR');
+
+  // Estado buttons
+  var btnsHtml = '';
+  var keys = ['pendiente', 'confirmada', 'cancelada'];
+  for (var k = 0; k < keys.length; k++) {
+    var key = keys[k];
+    var e = ESTADOS_COMPRA[key];
+    var active = compraActual.estado === key;
+    btnsHtml += '<button class="ped-estado-btn' + (active ? ' active' : '') + '" ' +
+      'style="--est-color:' + e.color + '" ' +
+      'onclick="cambiarEstadoCompra(\'' + key + '\')">' +
+      e.emoji + ' ' + e.label + '</button>';
+  }
+  document.getElementById('compEstadoBtns').innerHTML = btnsHtml;
+
+  document.getElementById('compDetModalBackdrop').classList.add('open');
+}
+
+function cerrarCompDetModal() {
+  document.getElementById('compDetModalBackdrop').classList.remove('open');
+  compraActual = null;
+}
+
+async function cambiarEstadoCompra(nuevoEstado) {
+  if (!compraActual) return;
+  try {
+    var res = await fetch(COMP_API, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: compraActual.id, estado: nuevoEstado })
+    });
+    var data = await res.json();
+    if (data.ok) {
+      compraActual.estado = nuevoEstado;
+      showToast('Estado actualizado a: ' + ESTADOS_COMPRA[nuevoEstado].label);
+      abrirCompra(compraActual.id);
+      cargarCompras();
+    } else {
+      showToast(data.error || 'Error al cambiar estado', true);
+    }
+  } catch (e) {
+    showToast('Error de conexión', true);
+  }
+}
+
+async function eliminarCompra() {
+  if (!compraActual) return;
+  var num = compraActual.numero;
+  document.getElementById('confirmMsg').textContent = '¿Eliminás la compra "' + num + '"? Esta acción no se puede deshacer.';
+  confirmCallback = async function() {
+    try {
+      var res = await fetch(COMP_API + '?id=' + compraActual.id, { method: 'DELETE' });
+      var data = await res.json();
+      if (data.ok) {
+        cerrarCompDetModal();
+        showToast('Compra ' + num + ' eliminada');
+        cargarCompras();
       } else {
         showToast(data.error || 'Error al eliminar', true);
       }

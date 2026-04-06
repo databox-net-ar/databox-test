@@ -11,10 +11,14 @@
  *   q         (string) — texto libre para buscar por nombre
  *
  * Respuesta:
- *   { ok: true, data: [ { id, nombre, precio, categoria, emoji, imagen, unidad, stock } ] }
+ *   { ok: true, data: [ { id, nombre, precio, categoria, emoji, imagen, unidad, stock, stock_actual, stock_minimo, stock_recomendado } ] }
  */
 header('Content-Type: application/json');
 header('Access-Control-Allow-Origin: *');
+header('Access-Control-Allow-Methods: GET, OPTIONS');
+header('Access-Control-Allow-Headers: Content-Type');
+
+if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') { exit; }
 
 require_once __DIR__ . '/../../config/db.php';
 
@@ -24,7 +28,7 @@ $q   = trim($_GET['q'] ?? '');
 try {
     $pdo = getDB();
 
-    $sql    = "SELECT id, nombre, precio, categoria, emoji, imagen, unidad, stock FROM productos WHERE 1=1";
+    $sql    = "SELECT id, nombre, precio, categoria, emoji, imagen, unidad, stock_actual, stock_minimo, stock_recomendado FROM productos WHERE stock_actual > 0";
     $params = [];
 
     if ($cat !== 'todos') {
@@ -40,10 +44,12 @@ try {
     $stmt->execute($params);
     $productos = $stmt->fetchAll();
 
-    // Convertir stock a booleano para compatibilidad con el frontend
     foreach ($productos as &$p) {
-        $p['stock']  = (bool)$p['stock'];
+        $p['stock']  = (int)$p['stock_actual'] > 0;
         $p['precio'] = (float)$p['precio'];
+        $p['stock_actual'] = (int)$p['stock_actual'];
+        $p['stock_minimo'] = (int)$p['stock_minimo'];
+        $p['stock_recomendado'] = (int)$p['stock_recomendado'];
     }
 
     echo json_encode(['ok' => true, 'data' => $productos]);
