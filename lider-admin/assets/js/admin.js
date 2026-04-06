@@ -5,6 +5,7 @@ const CAT_API = 'api/categorias.php';
 const PED_API = 'api/pedidos.php';
 const CFG_API = 'api/configuracion.php';
 const CLI_API = 'api/clientes.php';
+const PROV_API = 'api/proveedores.php';
 
 let CATEGORIAS = [];
 
@@ -354,7 +355,68 @@ function cambiarSeccion(seccion, navEl) {
     document.getElementById('seccionClientes').style.display = '';
     topbar.textContent = 'Gestión de Clientes';
     cargarClientes();
+  } else if (seccion === 'proveedores') {
+    document.getElementById('seccionProveedores').style.display = '';
+    topbar.textContent = 'Gestión de Proveedores';
+    cargarProveedores();
+  } else if (seccion === 'eventos') {
+    document.getElementById('seccionEventos').style.display = '';
+    topbar.textContent = 'Registros de Eventos';
+    cargarEventos();
   }
+}
+
+/* ===== Eventos ===== */
+let eventosData = [];
+let eventoBusqueda = '';
+
+async function cargarEventos() {
+  const tbody = document.getElementById('eventosBody');
+  tbody.innerHTML = '<tr class="spinner-row"><td colspan="4"><div class="spin"></div></td></tr>';
+
+  try {
+    const params = eventoBusqueda ? '?q=' + encodeURIComponent(eventoBusqueda) : '';
+    const res  = await fetch('api/eventos.php' + params);
+    const data = await res.json();
+    if (data.ok) {
+      eventosData = data.data || [];
+      document.getElementById('evtStatTotal').textContent = data.stats.total;
+      document.getElementById('evtStatHoy').textContent   = data.stats.hoy;
+      renderEventos();
+    } else {
+      tbody.innerHTML = '<tr><td colspan="4" class="table-empty">Error al cargar eventos</td></tr>';
+    }
+  } catch {
+    tbody.innerHTML = '<tr><td colspan="4" class="table-empty">Sin conexión</td></tr>';
+  }
+}
+
+function renderEventos() {
+  const tbody = document.getElementById('eventosBody');
+  if (!eventosData.length) {
+    tbody.innerHTML = '<tr><td colspan="4" class="table-empty">No hay eventos registrados</td></tr>';
+    return;
+  }
+  tbody.innerHTML = eventosData.map(ev => {
+    const fecha = new Date(ev.created_at).toLocaleString('es-AR', {
+      day: '2-digit', month: '2-digit', year: 'numeric',
+      hour: '2-digit', minute: '2-digit', second: '2-digit'
+    });
+    const cliente = ev.cliente_id > 0
+      ? esc(ev.cliente_nombre) + ' <span style="color:var(--muted);font-size:.78rem">(#' + ev.cliente_id + ')</span>'
+      : '<span style="color:var(--muted)">Sin sesión</span>';
+    return '<tr>'
+      + '<td>' + ev.id + '</td>'
+      + '<td>' + fecha + '</td>'
+      + '<td>' + cliente + '</td>'
+      + '<td>' + esc(ev.detalle) + '</td>'
+      + '</tr>';
+  }).join('');
+}
+
+function onSearchEvento(val) {
+  eventoBusqueda = val.trim();
+  cargarEventos();
 }
 
 /* ===== Categorías: Grid ===== */
@@ -820,6 +882,157 @@ function eliminarCliente(id, nombre) {
   document.getElementById('confirmBackdrop').classList.add('open');
 }
 
+/* ===== Proveedores ===== */
+var proveedores = [];
+var provSearchTimer = null;
+var filtroBusqProv = '';
+var provEditandoId = null;
+var provMapLat = null;
+var provMapLng = null;
+
+function onSearchProveedor(val) {
+  clearTimeout(provSearchTimer);
+  provSearchTimer = setTimeout(function() { filtroBusqProv = val; cargarProveedores(); }, 300);
+}
+
+async function cargarProveedores() {
+  try {
+    var url = PROV_API + '?q=' + encodeURIComponent(filtroBusqProv);
+    var res = await fetch(url);
+    var data = await res.json();
+    if (data.ok) {
+      proveedores = data.data || [];
+      renderProveedores();
+      if (data.stats) {
+        document.getElementById('provStatTotal').textContent = data.stats.total;
+      }
+    } else {
+      showToast(data.error || 'Error al cargar proveedores', true);
+    }
+  } catch (e) {
+    showToast('Error de conexión', true);
+  }
+}
+
+function renderProveedores() {
+  var lista = document.getElementById('proveedoresLista');
+  if (!proveedores.length) {
+    lista.innerHTML = '<div class="table-empty">No hay proveedores registrados</div>';
+    return;
+  }
+  lista.innerHTML = '<table class="table"><thead><tr>' +
+    '<th>Nombre</th><th>Domicilio</th><th>Correo</th><th>Ubicación</th><th></th>' +
+    '</tr></thead><tbody>' +
+    proveedores.map(function(p) { return renderFilaProveedor(p); }).join('') +
+    '</tbody></table>';
+}
+
+function renderFilaProveedor(p) {
+  var correo = p.correo ? '<a class="cli-email" href="mailto:' + esc(p.correo) + '">' + esc(p.correo) + '</a>' : '—';
+  var dom = p.domicilio ? esc(p.domicilio.length > 40 ? p.domicilio.substring(0,40) + '…' : p.domicilio) : '—';
+  var mapa = (p.lat && p.lng)
+    ? '<a class="cli-mapa" href="https://www.google.com/maps?q=' + p.lat + ',' + p.lng + '" target="_blank" rel="noopener">🗺️ Ver ubicación</a>'
+    : '—';
+  return '<tr>' +
+    '<td><strong>' + esc(p.nombre) + '</strong></td>' +
+    '<td>' + dom + '</td>' +
+    '<td>' + correo + '</td>' +
+    '<td>' + mapa + '</td>' +
+    '<td><div class="actions">' +
+      '<button class="btn-icon-sm" title="Editar" onclick="abrirEditarProveedor(' + p.id + ')">✏️</button>' +
+      '<button class="btn-icon-sm" title="Eliminar" onclick="eliminarProveedor(' + p.id + ',\'' + esc(p.nombre).replace(/'/g, "\\'") + '\')">🗑️</button>' +
+    '</div></td>' +
+    '</tr>';
+}
+
+function abrirNuevoProveedor() {
+  provEditandoId = null;
+  document.getElementById('provModalTitle').textContent = 'Nuevo proveedor';
+  document.getElementById('provNombre').value = '';
+  document.getElementById('provDomicilio').value = '';
+  document.getElementById('provCorreo').value = '';
+  provMapLat = null;
+  provMapLng = null;
+  document.getElementById('provMapInfo').textContent = 'Sin ubicación seleccionada.';
+  document.getElementById('provModalBackdrop').classList.add('open');
+  document.getElementById('provNombre').focus();
+}
+
+function abrirEditarProveedor(id) {
+  var p = proveedores.find(function(x) { return x.id === id; });
+  if (!p) return;
+  provEditandoId = id;
+  document.getElementById('provModalTitle').textContent = 'Editar proveedor';
+  document.getElementById('provNombre').value = p.nombre || '';
+  document.getElementById('provDomicilio').value = p.domicilio || '';
+  document.getElementById('provCorreo').value = p.correo || '';
+  provMapLat = p.lat ? parseFloat(p.lat) : null;
+  provMapLng = p.lng ? parseFloat(p.lng) : null;
+  document.getElementById('provMapInfo').innerHTML = (provMapLat && provMapLng)
+    ? '📍 <strong>' + provMapLat.toFixed(6) + ', ' + provMapLng.toFixed(6) + '</strong> — <a href="https://www.google.com/maps?q=' + provMapLat + ',' + provMapLng + '" target="_blank" style="color:var(--primary)">Ver en Maps</a>'
+    : 'Sin ubicación seleccionada.';
+  document.getElementById('provModalBackdrop').classList.add('open');
+  document.getElementById('provNombre').focus();
+}
+
+function cerrarModalProveedor() {
+  document.getElementById('provModalBackdrop').classList.remove('open');
+  provEditandoId = null;
+  provMapLat = null;
+  provMapLng = null;
+}
+
+async function guardarProveedor() {
+  var body = {
+    nombre:    document.getElementById('provNombre').value.trim(),
+    domicilio: document.getElementById('provDomicilio').value.trim(),
+    correo:    document.getElementById('provCorreo').value.trim(),
+    lat:       provMapLat,
+    lng:       provMapLng,
+  };
+  if (!body.nombre) { showToast('El nombre es obligatorio', true); return; }
+
+  try {
+    var method, url;
+    if (provEditandoId) {
+      body.id = provEditandoId;
+      method = 'PUT';
+    } else {
+      method = 'POST';
+    }
+    var res = await fetch(PROV_API, { method: method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+    var data = await res.json();
+    if (data.ok) {
+      cerrarModalProveedor();
+      cargarProveedores();
+      showToast(provEditandoId ? 'Proveedor actualizado' : 'Proveedor creado');
+    } else {
+      showToast(data.error || 'Error al guardar', true);
+    }
+  } catch (e) {
+    showToast('Error de conexión', true);
+  }
+}
+
+function eliminarProveedor(id, nombre) {
+  document.getElementById('confirmMsg').textContent = '¿Eliminás el proveedor "' + nombre + '"?';
+  confirmCallback = async function() {
+    try {
+      var res = await fetch(PROV_API + '?id=' + id, { method: 'DELETE' });
+      var data = await res.json();
+      if (data.ok) {
+        showToast('Proveedor eliminado');
+        cargarProveedores();
+      } else {
+        showToast(data.error || 'Error al eliminar', true);
+      }
+    } catch (e) {
+      showToast('Error de conexión', true);
+    }
+  };
+  document.getElementById('confirmBackdrop').classList.add('open');
+}
+
 /* ===== Configuración ===== */
 async function cargarConfiguracion() {
   try {
@@ -899,7 +1112,7 @@ var mapaSelector = null;
 var mapaMarker = null;
 var miniMapa = null;
 var miniMarker = null;
-var mapaContext = 'config'; // 'config' | 'cliente'
+var mapaContext = 'config'; // 'config' | 'cliente' | 'proveedor'
 var cliMapLat = null;
 var cliMapLng = null;
 
@@ -932,13 +1145,13 @@ function abrirMapaSelector(context) {
   document.getElementById('mapaBackdrop').classList.add('open');
 
   setTimeout(function() {
-    var activeLat = mapaContext === 'cliente' ? cliMapLat : centroDistLat;
-    var activeLng = mapaContext === 'cliente' ? cliMapLng : centroDistLng;
-    var defaultLat = activeLat || -34.6037;
-    var defaultLng = activeLng || -58.3816;
+    var activeLat = mapaContext === 'cliente' ? cliMapLat : mapaContext === 'proveedor' ? provMapLat : centroDistLat;
+    var activeLng = mapaContext === 'cliente' ? cliMapLng : mapaContext === 'proveedor' ? provMapLng : centroDistLng;
+    var defaultLat = activeLat || -31.5375;
+    var defaultLng = activeLng || -68.5364;
     var center = { lat: defaultLat, lng: defaultLng };
 
-    var activeLat2 = mapaContext === 'cliente' ? cliMapLat : centroDistLat;
+    var activeLat2 = mapaContext === 'cliente' ? cliMapLat : mapaContext === 'proveedor' ? provMapLat : centroDistLat;
     mapaSelector = new google.maps.Map(document.getElementById('mapaSelector'), {
       center: center,
       zoom: activeLat2 ? 16 : 12
@@ -985,6 +1198,13 @@ function aceptarUbicacion() {
       '📍 <strong>' + cliMapLat.toFixed(6) + ', ' + cliMapLng.toFixed(6) + '</strong>';
     cerrarMapaSelector();
     showToast('Ubicación del cliente seleccionada');
+  } else if (mapaContext === 'proveedor') {
+    provMapLat = pos.lat();
+    provMapLng = pos.lng();
+    document.getElementById('provMapInfo').innerHTML =
+      '📍 <strong>' + provMapLat.toFixed(6) + ', ' + provMapLng.toFixed(6) + '</strong>';
+    cerrarMapaSelector();
+    showToast('Ubicación del proveedor seleccionada');
   } else {
     centroDistLat = pos.lat();
     centroDistLng = pos.lng();

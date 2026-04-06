@@ -29,6 +29,12 @@
       <a class="nav-item" href="#" onclick="cambiarSeccion('clientes', this)" data-section="clientes">
         <span class="nav-icon">👥</span> Clientes
       </a>
+      <a class="nav-item" href="#" onclick="cambiarSeccion('proveedores', this)" data-section="proveedores">
+        <span class="nav-icon">🏭</span> Proveedores
+      </a>
+      <a class="nav-item" href="#" onclick="cambiarSeccion('eventos', this)" data-section="eventos">
+        <span class="nav-icon">📝</span> Eventos
+      </a>
       <a class="nav-item" href="#" onclick="cambiarSeccion('config', this)" data-section="config">
         <span class="nav-icon">⚙️</span> Configuración
       </a>
@@ -275,6 +281,79 @@
 
       </div><!-- /seccionClientes -->
 
+      <!-- ========== SECCIÓN PROVEEDORES ========== -->
+      <div class="section" id="seccionProveedores" style="display:none">
+
+        <!-- Stats proveedores -->
+        <div class="stats-bar">
+          <div class="stat-card">
+            <span class="stat-label">Total proveedores</span>
+            <span class="stat-value orange" id="provStatTotal">—</span>
+          </div>
+        </div>
+
+        <!-- Toolbar proveedores -->
+        <div class="toolbar">
+          <div class="toolbar-left">
+            <input class="search-input" type="text" placeholder="🔍 Buscar proveedor..." oninput="onSearchProveedor(this.value)">
+          </div>
+          <div class="toolbar-right">
+            <button class="btn btn-primary" onclick="abrirNuevoProveedor()">+ Nuevo proveedor</button>
+            <button class="btn btn-ghost" onclick="cargarProveedores()">🔄 Actualizar</button>
+          </div>
+        </div>
+
+        <!-- Lista de proveedores -->
+        <div id="proveedoresLista">
+          <div class="spinner-row" style="text-align:center;padding:40px"><div class="spin"></div></div>
+        </div>
+
+      </div><!-- /seccionProveedores -->
+
+      <!-- ========== SECCIÓN EVENTOS ========== -->
+      <div class="section" id="seccionEventos" style="display:none">
+
+        <!-- Stats eventos -->
+        <div class="stats-bar">
+          <div class="stat-card">
+            <span class="stat-label">Total registros</span>
+            <span class="stat-value orange" id="evtStatTotal">—</span>
+          </div>
+          <div class="stat-card">
+            <span class="stat-label">Hoy</span>
+            <span class="stat-value green" id="evtStatHoy">—</span>
+          </div>
+        </div>
+
+        <!-- Toolbar eventos -->
+        <div class="toolbar">
+          <div class="toolbar-left">
+            <input class="search-input" type="text" placeholder="🔍 Buscar evento..." oninput="onSearchEvento(this.value)">
+          </div>
+          <div class="toolbar-right">
+            <button class="btn btn-ghost" onclick="cargarEventos()">🔄 Actualizar</button>
+          </div>
+        </div>
+
+        <!-- Tabla eventos -->
+        <div class="table-card">
+          <table>
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Fecha y hora</th>
+                <th>Cliente</th>
+                <th>Detalle</th>
+              </tr>
+            </thead>
+            <tbody id="eventosBody">
+              <tr class="spinner-row"><td colspan="4"><div class="spin"></div></td></tr>
+            </tbody>
+          </table>
+        </div>
+
+      </div><!-- /seccionEventos -->
+
     </div><!-- /content -->
   </div><!-- /main -->
 </div><!-- /layout -->
@@ -511,6 +590,39 @@
     <div class="modal-footer">
       <button class="btn btn-ghost" onclick="cerrarModalCliente()">Cancelar</button>
       <button class="btn btn-primary" onclick="guardarCliente()">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== Modal Proveedor ===== -->
+<div class="modal-backdrop" id="provModalBackdrop" onclick="if(event.target===this)cerrarModalProveedor()">
+  <div class="modal" style="max-width:480px">
+    <div class="modal-header">
+      <div class="modal-title" id="provModalTitle">Nuevo proveedor</div>
+      <button class="btn btn-ghost" onclick="cerrarModalProveedor()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label>Nombre *</label>
+        <input type="text" id="provNombre" placeholder="Nombre del proveedor">
+      </div>
+      <div class="form-group">
+        <label>Domicilio</label>
+        <input type="text" id="provDomicilio" placeholder="Calle, número, localidad">
+      </div>
+      <div class="form-group">
+        <label>Correo electrónico</label>
+        <input type="email" id="provCorreo" placeholder="email@ejemplo.com">
+      </div>
+      <div class="form-group">
+        <label>Ubicación en el mapa</label>
+        <div id="provMapInfo" class="config-hint" style="margin-bottom:8px">Sin ubicación seleccionada.</div>
+        <button type="button" class="btn btn-ghost" onclick="abrirMapaSelector('proveedor')">🗺️ Seleccionar en el mapa</button>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="cerrarModalProveedor()">Cancelar</button>
+      <button class="btn btn-primary" onclick="guardarProveedor()">Guardar</button>
     </div>
   </div>
 </div>

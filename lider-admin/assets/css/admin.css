@@ -447,6 +447,9 @@ tbody tr:hover { background: #fafafa; }
   display: none;
 }
 
+/* ===== Modal Mapa: z-index superior para aparecer sobre otros modales ===== */
+#mapaBackdrop { z-index: 110; }
+
 /* ===== Clientes: visualización ===== */
 .btn-sm { padding: 5px 12px; font-size: .8rem; }
 .cli-email { font-size: .78rem; color: var(--primary); text-decoration: none; }

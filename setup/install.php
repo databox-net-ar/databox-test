@@ -135,6 +135,40 @@ try {
     $ok = false;
 }
 
+try {
+    $pdo->exec("
+        CREATE TABLE IF NOT EXISTS eventos (
+            id          INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+            cliente_id  INT UNSIGNED NOT NULL DEFAULT 0,
+            detalle     VARCHAR(500) NOT NULL,
+            created_at  TIMESTAMP    DEFAULT CURRENT_TIMESTAMP
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+    ");
+    msg("Tabla <b>eventos</b> creada/verificada", 'ok');
+} catch (Exception $e) {
+    msg("Error creando tabla eventos: " . htmlspecialchars($e->getMessage()), 'error');
+    $ok = false;
+}
+
+try {
+    $pdo->exec("
+        CREATE TABLE IF NOT EXISTS proveedores (
+            id          INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+            nombre      VARCHAR(120) NOT NULL,
+            domicilio   VARCHAR(255) DEFAULT '',
+            correo      VARCHAR(150) DEFAULT NULL,
+            lat         DECIMAL(10,7) DEFAULT NULL,
+            lng         DECIMAL(10,7) DEFAULT NULL,
+            created_at  TIMESTAMP    DEFAULT CURRENT_TIMESTAMP,
+            updated_at  TIMESTAMP    DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+    ");
+    msg("Tabla <b>proveedores</b> creada/verificada", 'ok');
+} catch (Exception $e) {
+    msg("Error creando tabla proveedores: " . htmlspecialchars($e->getMessage()), 'error');
+    $ok = false;
+}
+
 // ── 1b. Migraciones: agregar columnas faltantes ──────────────────
 if ($ok) {
     // lat, lng en pedidos

@@ -67,6 +67,14 @@
   </div>
 </div>
 
+<!-- ===== Perfil section ===== -->
+<div id="perfilSection" style="display:none">
+  <div class="section-title">Mi perfil</div>
+  <div id="perfilContenido">
+    <div class="spinner"><div class="spin"></div></div>
+  </div>
+</div>
+
 <!-- ===== Toast ===== -->
 <div class="toast" id="toast"></div>
 
@@ -156,6 +164,46 @@
   </div>
 </div>
 
+<!-- ===== Modal Editar Perfil ===== -->
+<div class="modal-wrap" id="perfilModal">
+  <div class="modal-backdrop" onclick="closePerfilModal()"></div>
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title">Editar perfil</div>
+    <div class="form-group">
+      <label>Nombre *</label>
+      <input type="text" id="pNombre" placeholder="Tu nombre completo" autocomplete="name">
+    </div>
+    <div class="form-group">
+      <label>Correo electrónico</label>
+      <input type="email" id="pCorreo" placeholder="email@ejemplo.com" autocomplete="email">
+    </div>
+    <div class="form-group">
+      <label>Teléfono</label>
+      <input type="tel" id="pTelefono" placeholder="Ej: 11 2345-6789" autocomplete="tel">
+    </div>
+    <div class="form-group">
+      <label>Dirección de entrega</label>
+      <input type="text" id="pDireccion" placeholder="Calle, número, piso/depto" autocomplete="street-address">
+    </div>
+    <div class="form-group">
+      <label>Ubicación GPS</label>
+      <div class="perfil-geo-row">
+        <div class="perfil-geo-status" id="pGeoStatus">
+          <span id="pGeoIcon">⚪</span>
+          <span id="pGeoLabel">Sin ubicación detectada</span>
+        </div>
+        <button type="button" class="perfil-geo-btn" id="pGeoBtn" onclick="detectarUbicacionPerfil()">
+          Detectar
+        </button>
+      </div>
+    </div>
+    <button class="btn-checkout" id="btnGuardarPerfil" onclick="guardarPerfil()">
+      Guardar cambios
+    </button>
+  </div>
+</div>
+
 <!-- ===== Geolocation prompt ===== -->
 <div class="geo-overlay" id="geoOverlay">
   <div class="geo-card">
@@ -183,7 +231,7 @@
     <span class="nav-icon"><img src="https://cdn.jsdelivr.net/npm/openmoji@15.0.0/color/svg/1F4CB.svg" alt="pedidos" width="24" height="24"></span>
     Pedidos
   </button>
-  <button class="nav-tab">
+  <button class="nav-tab" onclick="selectTab('perfil', this)">
     <span class="nav-icon"><img src="https://cdn.jsdelivr.net/npm/openmoji@15.0.0/color/svg/1F464.svg" alt="perfil" width="24" height="24"></span>
     Perfil
   </button>
