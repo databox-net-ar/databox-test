@@ -112,7 +112,7 @@ textarea { resize: vertical; min-height: 60px; }
 .stat-value.red    { color: var(--danger);  }
 
 /* ===== Table card ===== */
-.table-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow); overflow: hidden; }
+.table-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow); overflow-x: auto; overflow-y: hidden; }
 
 table { width: 100%; border-collapse: collapse; font-size: .88rem; }
 thead tr { background: var(--bg); }
@@ -263,13 +263,33 @@ tbody tr:hover { background: #fafafa; }
 .confirm-msg   { font-size: .88rem; color: var(--muted); margin-bottom: 20px; }
 .confirm-actions { display: flex; gap: 10px; justify-content: flex-end; }
 
+/* ===== Hamburger ===== */
+.hamburger {
+  display: none; background: none; border: none; cursor: pointer;
+  font-size: 1.4rem; color: var(--text); padding: 4px 8px; margin-right: 8px;
+  line-height: 1;
+}
+
+/* ===== Sidebar overlay (mobile) ===== */
+.sidebar-overlay {
+  display: none; position: fixed; inset: 0; background: rgba(0,0,0,.45);
+  z-index: 199;
+}
+.sidebar-overlay.active { display: block; }
+
 /* ===== Responsive ===== */
 @media (max-width: 768px) {
-  .sidebar { display: none; }
+  .hamburger { display: inline-flex; align-items: center; }
+
+  .sidebar {
+    position: fixed; top: 0; left: 0; height: 100vh; z-index: 200;
+    transform: translateX(-100%); transition: transform .25s ease;
+    box-shadow: var(--shadow-lg);
+  }
+  .sidebar.open { transform: translateX(0); }
+
   .search-input { width: 160px; }
   .form-row { grid-template-columns: 1fr; }
-  th:nth-child(3), td:nth-child(3),
-  th:nth-child(5), td:nth-child(5) { display: none; }
 }
 
 /* ===== Categorías Grid ===== */

@@ -81,6 +81,8 @@ try {
             telefono    VARCHAR(40)  DEFAULT '',
             direccion   VARCHAR(255) DEFAULT '',
             correo      VARCHAR(150) DEFAULT NULL,
+            contrasena  VARCHAR(100) NOT NULL DEFAULT '',
+            clave       VARCHAR(100) NOT NULL DEFAULT '',
             lat         DECIMAL(10,7) DEFAULT NULL,
             lng         DECIMAL(10,7) DEFAULT NULL,
             created_at  TIMESTAMP    DEFAULT CURRENT_TIMESTAMP,
@@ -214,6 +216,58 @@ try {
     $ok = false;
 }
 
+try {
+    $pdo->exec("
+        CREATE TABLE IF NOT EXISTS configuracion (
+            clave      VARCHAR(100) PRIMARY KEY,
+            valor      TEXT NOT NULL,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+    ");
+    msg("Tabla <b>configuracion</b> creada/verificada", 'ok');
+
+    $cfgDefaults = [
+        'pedido_minimo'          => '0',
+        'centro_dist_lat'        => '',
+        'centro_dist_lng'        => '',
+        'precio_km'              => '0',
+        'datarocket_url'         => 'https://api.databox.net.ar',
+        'datarocket_apikey'      => 'z9SACoW1SiHGiyan6JVMwudC73r7Y0An',
+        'datarocket_proyecto'    => 'vigicom',
+        'datarocket_canal_email' => 'databox',
+        'datarocket_canal_wa'    => 'repo-hum',
+        'datarocket_remitente'   => 'Lider Online',
+        'datarocket_remite'      => '1169391123',
+    ];
+    $stmtCfg = $pdo->prepare("INSERT IGNORE INTO configuracion (clave, valor) VALUES (?, ?)");
+    foreach ($cfgDefaults as $clave => $valor) {
+        $stmtCfg->execute([$clave, $valor]);
+    }
+    msg("Configuración por defecto insertada (<b>" . count($cfgDefaults) . "</b> claves)", 'ok');
+} catch (Exception $e) {
+    msg("Error creando tabla configuracion: " . htmlspecialchars($e->getMessage()), 'error');
+    $ok = false;
+}
+
+try {
+    $pdo->exec("
+        CREATE TABLE IF NOT EXISTS mensajes (
+            id           INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+            canal        ENUM('email','whatsapp') NOT NULL,
+            destinatario VARCHAR(255) NOT NULL,
+            destino      VARCHAR(255) NOT NULL DEFAULT '',
+            asunto       VARCHAR(500) NOT NULL DEFAULT '',
+            mensaje      TEXT        NOT NULL,
+            estado       VARCHAR(50)  NOT NULL DEFAULT 'enviado',
+            created_at   TIMESTAMP   DEFAULT CURRENT_TIMESTAMP
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+    ");
+    msg("Tabla <b>mensajes</b> creada/verificada", 'ok');
+} catch (Exception $e) {
+    msg("Error creando tabla mensajes: " . htmlspecialchars($e->getMessage()), 'error');
+    $ok = false;
+}
+
 // ── 1b. Migraciones: agregar columnas faltantes ──────────────────
 if ($ok) {
     // lat, lng en pedidos
@@ -304,6 +358,24 @@ if ($ok) {
     } catch (Exception $e) {
         $pdo->exec("ALTER TABLE clientes ADD COLUMN lat DECIMAL(10,7) DEFAULT NULL, ADD COLUMN lng DECIMAL(10,7) DEFAULT NULL");
         msg("Columnas <b>lat, lng</b> agregadas a clientes", 'ok');
+    }
+
+    // contrasena, clave en clientes
+    try {
+        $pdo->query("SELECT contrasena FROM clientes LIMIT 1");
+        msg("Columnas <b>contrasena, clave</b> ya existen en clientes", 'info');
+    } catch (Exception $e) {
+        $pdo->exec("ALTER TABLE clientes ADD COLUMN contrasena VARCHAR(100) NOT NULL DEFAULT '' AFTER correo, ADD COLUMN clave VARCHAR(100) NOT NULL DEFAULT '' AFTER contrasena");
+        msg("Columnas <b>contrasena, clave</b> agregadas a clientes", 'ok');
+    }
+
+    // destino en mensajes
+    try {
+        $pdo->query("SELECT destino FROM mensajes LIMIT 1");
+        msg("Columna <b>destino</b> ya existe en mensajes", 'info');
+    } catch (Exception $e) {
+        $pdo->exec("ALTER TABLE mensajes ADD COLUMN destino VARCHAR(255) NOT NULL DEFAULT '' AFTER destinatario");
+        msg("Columna <b>destino</b> agregada a mensajes", 'ok');
     }
 }
 

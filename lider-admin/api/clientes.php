@@ -33,6 +33,11 @@ try {
     exit;
 }
 
+// Migración: agregar contrasena y clave si no existen
+try { $pdo->query("SELECT contrasena FROM clientes LIMIT 1"); } catch (Exception $e) {
+    $pdo->exec("ALTER TABLE clientes ADD COLUMN contrasena VARCHAR(100) NOT NULL DEFAULT '' AFTER correo, ADD COLUMN clave VARCHAR(100) NOT NULL DEFAULT '' AFTER contrasena");
+}
+
 $method = $_SERVER['REQUEST_METHOD'];
 
 switch ($method) {
@@ -52,7 +57,7 @@ switch ($method) {
             $params[] = $like;
         }
 
-        $sql = "SELECT c.id, c.nombre, c.telefono, c.direccion, c.correo, c.lat, c.lng, c.created_at,
+        $sql = "SELECT c.id, c.nombre, c.telefono, c.direccion, c.correo, c.contrasena, c.clave, c.lat, c.lng, c.created_at,
                        COUNT(p.id) as total_pedidos,
                        COALESCE(SUM(p.total), 0) as total_gastado,
                        MAX(p.created_at) as ultimo_pedido
@@ -113,6 +118,14 @@ switch ($method) {
         if (isset($body['correo'])) {
             $campos[] = 'correo = ?';
             $params[] = trim($body['correo']) ?: null;
+        }
+        if (isset($body['contrasena'])) {
+            $campos[] = 'contrasena = ?';
+            $params[] = trim($body['contrasena']);
+        }
+        if (isset($body['clave'])) {
+            $campos[] = 'clave = ?';
+            $params[] = trim($body['clave']);
         }
         if (array_key_exists('lat', $body)) {
             $campos[] = 'lat = ?';

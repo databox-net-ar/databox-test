@@ -75,6 +75,52 @@ async function enviarPedido(datos) {
   }
 }
 
+async function notificarWhatsApp(pedido, datos) {
+  const lineas = datos.items.map(i => `• ${i.nombre} ×${i.cantidad} — $${(i.precio * i.cantidad).toLocaleString('es-AR')}`).join('\n');
+  const total  = datos.items.reduce((s, i) => s + i.precio * i.cantidad, 0);
+  const cuerpo = `🛒 *Nuevo pedido ${pedido.numero}*\n\n`
+    + `👤 ${datos.cliente}\n`
+    + `📞 ${datos.telefono}\n`
+    + `📍 ${datos.direccion}\n`
+    + (datos.notas ? `📝 ${datos.notas}\n` : '')
+    + `\n${lineas}\n\n`
+    + `💰 *Total: $${total.toLocaleString('es-AR')}*`;
+
+  try {
+    const payload = {
+      servicio:     'evolution',
+      proyecto:     'vigicom',
+      canal:        'repo-hum',
+      plantilla:    '',
+      remitente:    'Lider Online',
+      remite:       '1169391123',
+      destinatario: 'Lider',
+      destino:      '2644984568',
+      prioridad:    '2',
+      asunto:       'Nuevo pedido ' + pedido.numero,
+      cuerpo:       cuerpo,
+      variables:    '',
+      codificado:   '0',
+      formato:      'T',
+      adjunto:      '',
+      parametros:   '',
+      tags:         'pedido',
+    };
+    console.log('[WA] payload →', payload);
+    const waRes  = await fetch('api/notificar_whatsapp.php', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    const waText = await waRes.text();
+    console.log('[WA] status:', waRes.status, '| respuesta:', waText);
+    showToast('[WA] ' + waRes.status + ' ' + waText.slice(0, 80));
+  } catch (err) {
+    console.error('[WA] error de red:', err);
+    showToast('[WA] error de red: ' + err.message);
+  }
+}
+
 function registrarEvento(detalle) {
   const clienteId = parseInt(getCookie('cliente_id')) || 0;
   fetch('api/eventos.php', {
@@ -238,7 +284,10 @@ function closeCart() {
 
 /* ===== Checkout Modal ===== */
 function openCheckout() {
-  if (!state.cart.length) return;
+  if (!state.cart.length) {
+    showToast('Agregá productos al carrito primero');
+    return;
+  }
   if (pedidoMinimo > 0 && cart.total() < pedidoMinimo) {
     showToast('El pedido mínimo es $' + pedidoMinimo.toLocaleString('es-AR'));
     return;
@@ -354,6 +403,7 @@ async function handleCheckout(e) {
       document.getElementById('checkoutForm').style.display = 'none';
       document.getElementById('confirmNum').textContent = res.pedido.numero;
       document.getElementById('confirmScreen').classList.add('show');
+      notificarWhatsApp(res.pedido, datos);
       cart.clear();
     } else {
       console.error('Error pedido:', res);
@@ -762,7 +812,7 @@ function showToast(msg) {
   el.textContent = msg;
   el.classList.add('show');
   clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => el.classList.remove('show'), 500);
+  toastTimer = setTimeout(() => el.classList.remove('show'), 3000);
 }
 
 /* ===== Product Detail Modal ===== */

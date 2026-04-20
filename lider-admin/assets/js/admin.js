@@ -97,6 +97,7 @@ function renderTabla() {
       </td>
       <td>
         <div class="actions">
+          <button class="btn-icon-sm" title="Ver detalle" onclick="abrirDetalleProducto(${p.id})">🔍</button>
           <button class="btn-icon-sm" title="Editar" onclick="abrirEditar(${p.id})">✏️</button>
           <button class="btn-icon-sm" title="Eliminar" onclick="confirmarEliminar(${p.id}, '${esc(p.nombre)}')">🗑️</button>
         </div>
@@ -105,6 +106,41 @@ function renderTabla() {
 }
 
 function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+/* ===== Modal detalle producto ===== */
+function abrirDetalleProducto(id) {
+  const p = productos.find(x => x.id === id);
+  if (!p) return;
+
+  const cat = CATEGORIAS.find(c => c.id === p.categoria);
+
+  document.getElementById('prodDetNombre').textContent    = (p.emoji ? p.emoji + ' ' : '') + p.nombre;
+  document.getElementById('prodDetCategoria').textContent = cat ? cat.emoji + ' ' + cat.label : p.categoria;
+  document.getElementById('prodDetPrecio').textContent    = '$' + Number(p.precio).toLocaleString('es-AR') + ' / ' + p.unidad;
+  document.getElementById('prodDetStockActual').textContent      = p.stock_actual      ?? 0;
+  document.getElementById('prodDetStockComprometido').textContent = p.stock_comprometido ?? 0;
+  document.getElementById('prodDetStockMinimo').textContent      = p.stock_minimo      ?? 0;
+  document.getElementById('prodDetStockRecomendado').textContent  = p.stock_recomendado  ?? 0;
+
+  const imgEl = document.getElementById('prodDetImg');
+  if (p.imagen) {
+    imgEl.src = p.imagen;
+    imgEl.style.display = '';
+  } else {
+    imgEl.style.display = 'none';
+  }
+
+  document.getElementById('btnProdDetEditar').onclick = function() {
+    cerrarDetalleProducto();
+    abrirEditar(id);
+  };
+
+  document.getElementById('prodDetBackdrop').classList.add('open');
+}
+
+function cerrarDetalleProducto() {
+  document.getElementById('prodDetBackdrop').classList.remove('open');
+}
 
 /* ===== Modal: poblar selects ===== */
 function poblarSelects() {
@@ -342,7 +378,17 @@ function showToast(msg, error = false) {
 }
 
 /* ===== Navegación de secciones ===== */
+function toggleSidebar() {
+  document.getElementById('mainSidebar').classList.toggle('open');
+  document.getElementById('sidebarOverlay').classList.toggle('active');
+}
+function closeSidebar() {
+  document.getElementById('mainSidebar').classList.remove('open');
+  document.getElementById('sidebarOverlay').classList.remove('active');
+}
+
 function cambiarSeccion(seccion, navEl) {
+  closeSidebar();
   // Actualizar sidebar
   document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
   if (navEl) navEl.classList.add('active');
@@ -379,6 +425,10 @@ function cambiarSeccion(seccion, navEl) {
     document.getElementById('seccionCompras').style.display = '';
     topbar.textContent = 'Gestión de Compras';
     cargarCompras();
+  } else if (seccion === 'mensajes') {
+    document.getElementById('seccionMensajes').style.display = '';
+    topbar.textContent = 'Mensajes Enviados';
+    cargarMensajes();
   } else if (seccion === 'eventos') {
     document.getElementById('seccionEventos').style.display = '';
     topbar.textContent = 'Registros de Eventos';
@@ -392,7 +442,7 @@ let eventoBusqueda = '';
 
 async function cargarEventos() {
   const tbody = document.getElementById('eventosBody');
-  tbody.innerHTML = '<tr class="spinner-row"><td colspan="4"><div class="spin"></div></td></tr>';
+  tbody.innerHTML = '<tr class="spinner-row"><td colspan="5"><div class="spin"></div></td></tr>';
 
   try {
     const params = eventoBusqueda ? '?q=' + encodeURIComponent(eventoBusqueda) : '';
@@ -404,17 +454,17 @@ async function cargarEventos() {
       document.getElementById('evtStatHoy').textContent   = data.stats.hoy;
       renderEventos();
     } else {
-      tbody.innerHTML = '<tr><td colspan="4" class="table-empty">Error al cargar eventos</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="5" class="table-empty">Error al cargar eventos</td></tr>';
     }
   } catch {
-    tbody.innerHTML = '<tr><td colspan="4" class="table-empty">Sin conexión</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="5" class="table-empty">Sin conexión</td></tr>';
   }
 }
 
 function renderEventos() {
   const tbody = document.getElementById('eventosBody');
   if (!eventosData.length) {
-    tbody.innerHTML = '<tr><td colspan="4" class="table-empty">No hay eventos registrados</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="5" class="table-empty">No hay eventos registrados</td></tr>';
     return;
   }
   tbody.innerHTML = eventosData.map(ev => {
@@ -425,18 +475,161 @@ function renderEventos() {
     const cliente = ev.cliente_id > 0
       ? esc(ev.cliente_nombre) + ' <span style="color:var(--muted);font-size:.78rem">(#' + ev.cliente_id + ')</span>'
       : '<span style="color:var(--muted)">Sin sesión</span>';
-    return '<tr>'
+    return '<tr style="cursor:pointer" onclick="abrirDetalleEvento(' + ev.id + ')">'
       + '<td>' + ev.id + '</td>'
       + '<td>' + fecha + '</td>'
       + '<td>' + cliente + '</td>'
       + '<td>' + esc(ev.detalle) + '</td>'
+      + '<td onclick="event.stopPropagation()"><button class="btn-icon-sm" title="Ver detalle" onclick="abrirDetalleEvento(' + ev.id + ')">🔍</button></td>'
       + '</tr>';
   }).join('');
+}
+
+/* ===== Modal detalle evento ===== */
+function abrirDetalleEvento(id) {
+  const ev = eventosData.find(x => x.id == id);
+  if (!ev) return;
+
+  const fecha = new Date(ev.created_at).toLocaleString('es-AR', {
+    weekday: 'long', day: '2-digit', month: '2-digit', year: 'numeric',
+    hour: '2-digit', minute: '2-digit', second: '2-digit'
+  });
+
+  document.getElementById('evtDetId').textContent      = '#' + ev.id;
+  document.getElementById('evtDetFecha').textContent   = fecha;
+  document.getElementById('evtDetDetalle').textContent = ev.detalle || '—';
+
+  const cliEl = document.getElementById('evtDetCliente');
+  if (ev.cliente_id > 0) {
+    cliEl.textContent = ev.cliente_nombre + ' (#' + ev.cliente_id + ')';
+  } else {
+    cliEl.innerHTML = '<span style="color:var(--text-secondary)">Sin sesión</span>';
+  }
+
+  document.getElementById('evtDetBackdrop').classList.add('open');
+}
+
+function cerrarDetalleEvento() {
+  document.getElementById('evtDetBackdrop').classList.remove('open');
 }
 
 function onSearchEvento(val) {
   eventoBusqueda = val.trim();
   cargarEventos();
+}
+
+/* ===== Mensajes ===== */
+let mensajesData = [];
+let mensajeBusqueda = '';
+let mensajeFiltroCanal = 'todos';
+
+async function cargarMensajes() {
+  const tbody = document.getElementById('mensajesBody');
+  tbody.innerHTML = '<tr class="spinner-row"><td colspan="7"><div class="spin"></div></td></tr>';
+
+  try {
+    const params = new URLSearchParams();
+    if (mensajeBusqueda) params.set('q', mensajeBusqueda);
+    if (mensajeFiltroCanal !== 'todos') params.set('canal', mensajeFiltroCanal);
+    const qs = params.toString() ? '?' + params.toString() : '';
+    const res  = await fetch('api/mensajes.php' + qs);
+    const data = await res.json();
+    if (data.ok) {
+      mensajesData = data.data || [];
+      document.getElementById('msgStatTotal').textContent    = data.stats.total;
+      document.getElementById('msgStatEmail').textContent    = data.stats.email;
+      document.getElementById('msgStatWhatsapp').textContent = data.stats.whatsapp;
+      renderMensajes();
+    } else {
+      tbody.innerHTML = '<tr><td colspan="7" class="table-empty">Error al cargar mensajes</td></tr>';
+    }
+  } catch {
+    tbody.innerHTML = '<tr><td colspan="7" class="table-empty">Sin conexión</td></tr>';
+  }
+}
+
+function renderMensajes() {
+  const tbody = document.getElementById('mensajesBody');
+  if (!mensajesData.length) {
+    tbody.innerHTML = '<tr><td colspan="7" class="table-empty">No hay mensajes registrados</td></tr>';
+    return;
+  }
+  tbody.innerHTML = mensajesData.map(m => {
+    const fecha = new Date(m.created_at).toLocaleString('es-AR', {
+      day: '2-digit', month: '2-digit', year: 'numeric',
+      hour: '2-digit', minute: '2-digit'
+    });
+    const canal = m.canal === 'email'
+      ? '<span style="color:#3b82f6;font-weight:600">📧 Correo</span>'
+      : '<span style="color:#16a34a;font-weight:600">💬 WhatsApp</span>';
+    const estadoColor = m.estado === 'enviado' ? 'green'
+      : m.estado === 'error' ? 'red' : 'var(--warn)';
+    const estadoLabel = m.estado === 'enviado' ? '✅ Enviado'
+      : m.estado === 'error' ? '❌ Error' : '⏳ ' + esc(m.estado);
+    return '<tr style="cursor:pointer" onclick="abrirDetalleMensaje(' + m.id + ')">'
+      + '<td>' + m.id + '</td>'
+      + '<td>' + fecha + '</td>'
+      + '<td>' + canal + '</td>'
+      + '<td>' + esc(m.destinatario) + '</td>'
+      + '<td style="max-width:320px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="' + esc(m.mensaje) + '">'
+        + (m.asunto ? '<strong>' + esc(m.asunto) + '</strong> — ' : '') + esc(m.mensaje)
+        + '</td>'
+      + '<td style="color:' + estadoColor + ';font-weight:600">' + estadoLabel + '</td>'
+      + '<td onclick="event.stopPropagation()"><button class="btn-icon-sm" title="Ver detalle" onclick="abrirDetalleMensaje(' + m.id + ')">🔍</button></td>'
+      + '</tr>';
+  }).join('');
+}
+
+function onSearchMensaje(val) {
+  mensajeBusqueda = val.trim();
+  cargarMensajes();
+}
+
+function onFiltroCanal(val) {
+  mensajeFiltroCanal = val;
+  cargarMensajes();
+}
+
+function abrirDetalleMensaje(id) {
+  const m = mensajesData.find(x => x.id == id);
+  if (!m) return;
+
+  const fecha = new Date(m.created_at).toLocaleString('es-AR', {
+    weekday: 'long', day: '2-digit', month: '2-digit', year: 'numeric',
+    hour: '2-digit', minute: '2-digit', second: '2-digit'
+  });
+
+  const canalLabel = m.canal === 'email'
+    ? '<span style="color:#3b82f6;font-weight:600">📧 Correo electrónico</span>'
+    : '<span style="color:#16a34a;font-weight:600">💬 WhatsApp</span>';
+
+  const estadoColor = m.estado === 'enviado' ? 'var(--success)'
+    : m.estado === 'error' ? 'var(--danger)' : 'var(--warn)';
+  const estadoLabel = m.estado === 'enviado' ? '✅ Enviado'
+    : m.estado === 'error' ? '❌ Error' : '⏳ ' + esc(m.estado);
+
+  document.getElementById('msgDetId').textContent      = '#' + m.id;
+  document.getElementById('msgDetFecha').textContent   = fecha;
+  document.getElementById('msgDetCanal').innerHTML     = canalLabel;
+  document.getElementById('msgDetDestinatario').textContent = m.destinatario || '—';
+  document.getElementById('msgDetDestino').textContent = m.destino || (m.canal === 'email' ? '(sin email registrado)' : '(sin teléfono registrado)');
+  document.getElementById('msgDetEstado').innerHTML    = '<span style="color:' + estadoColor + ';font-weight:700">' + estadoLabel + '</span>';
+
+  const asuntoRow = document.getElementById('msgDetAsuntoRow');
+  if (m.asunto) {
+    asuntoRow.style.display = '';
+    document.getElementById('msgDetAsunto').textContent = m.asunto;
+  } else {
+    asuntoRow.style.display = 'none';
+  }
+
+  document.getElementById('msgDetCuerpo').textContent = m.mensaje || '';
+
+  document.getElementById('msgDetBackdrop').classList.add('open');
+}
+
+function cerrarDetalleMensaje() {
+  document.getElementById('msgDetBackdrop').classList.remove('open');
 }
 
 /* ===== Categorías: Grid ===== */
@@ -797,11 +990,11 @@ function renderClientes() {
     lista.innerHTML = '<div class="table-empty">No hay clientes registrados</div>';
     return;
   }
-  lista.innerHTML = '<table class="table"><thead><tr>' +
+  lista.innerHTML = '<div class="table-card"><table class="table"><thead><tr>' +
     '<th>Nombre / Correo</th><th>Teléfono</th><th>Dirección / Ubicación</th><th>Pedidos</th><th>Total gastado</th><th>Último pedido</th><th></th>' +
     '</tr></thead><tbody>' +
     clientes.map(function(c) { return renderFilaCliente(c); }).join('') +
-    '</tbody></table>';
+    '</tbody></table></div>';
 }
 
 function renderFilaCliente(c) {
@@ -811,18 +1004,57 @@ function renderFilaCliente(c) {
   var mapa    = (c.lat && c.lng)
     ? '<br><a class="cli-mapa" href="https://www.google.com/maps?q=' + c.lat + ',' + c.lng + '" target="_blank" rel="noopener">🗺️ Ver ubicación</a>'
     : '';
-  return '<tr id="cli-row-' + c.id + '">' +
+  return '<tr id="cli-row-' + c.id + '" style="cursor:pointer" onclick="abrirDetalleCliente(' + c.id + ')">' +
     '<td><strong>' + esc(c.nombre) + '</strong>' + correo + '</td>' +
     '<td>' + esc(c.telefono || '—') + '</td>' +
     '<td>' + dir + mapa + '</td>' +
     '<td style="text-align:center">' + c.total_pedidos + '</td>' +
     '<td>$' + Number(c.total_gastado).toLocaleString('es-AR') + '</td>' +
     '<td>' + ultimo + '</td>' +
-    '<td><div class="actions">' +
+    '<td><div class="actions" onclick="event.stopPropagation()">' +
+      '<button class="btn-icon-sm" title="Ver detalle" onclick="abrirDetalleCliente(' + c.id + ')">🔍</button>' +
       '<button class="btn-icon-sm" title="Editar" onclick="abrirEditarCliente(' + c.id + ')">✏️</button>' +
       '<button class="btn-icon-sm" title="Eliminar" onclick="eliminarCliente(' + c.id + ',\'' + esc(c.nombre).replace(/'/g, "\\'") + '\')">🗑️</button>' +
     '</div></td>' +
     '</tr>';
+}
+
+/* ===== Modal detalle cliente ===== */
+function abrirDetalleCliente(id) {
+  var c = clientes.find(function(x) { return x.id === id; });
+  if (!c) return;
+
+  document.getElementById('cliDetNombre').textContent    = c.nombre || '—';
+  document.getElementById('cliDetTelefono').textContent  = c.telefono || '—';
+  document.getElementById('cliDetCorreo').textContent    = c.correo || '—';
+  document.getElementById('cliDetDireccion').textContent = c.direccion || '—';
+
+  var ubiEl = document.getElementById('cliDetUbicacion');
+  if (c.lat && c.lng) {
+    ubiEl.innerHTML = '<a href="https://www.google.com/maps?q=' + c.lat + ',' + c.lng + '" target="_blank" rel="noopener" style="color:var(--primary);font-weight:600">📍 Ver en Google Maps</a>'
+      + ' <span style="color:var(--text-secondary);font-size:.8rem">(' + parseFloat(c.lat).toFixed(6) + ', ' + parseFloat(c.lng).toFixed(6) + ')</span>';
+  } else {
+    ubiEl.innerHTML = '<span style="color:var(--text-secondary)">Sin ubicación registrada</span>';
+  }
+
+  document.getElementById('cliDetContrasena').textContent = c.contrasena || '—';
+  document.getElementById('cliDetClave').textContent      = c.clave      || '—';
+  document.getElementById('cliDetPedidos').textContent    = c.total_pedidos || 0;
+  document.getElementById('cliDetGastado').textContent    = '$' + Number(c.total_gastado || 0).toLocaleString('es-AR');
+  document.getElementById('cliDetUltimo').textContent     = c.ultimo_pedido
+    ? new Date(c.ultimo_pedido).toLocaleDateString('es-AR', { day:'2-digit', month:'2-digit', year:'numeric' })
+    : '—';
+
+  document.getElementById('btnCliDetEditar').onclick = function() {
+    cerrarDetalleCliente();
+    abrirEditarCliente(id);
+  };
+
+  document.getElementById('cliDetBackdrop').classList.add('open');
+}
+
+function cerrarDetalleCliente() {
+  document.getElementById('cliDetBackdrop').classList.remove('open');
 }
 
 /* ===== Modal editar cliente ===== */
@@ -832,10 +1064,12 @@ function abrirEditarCliente(id) {
   var c = clientes.find(function(x) { return x.id === id; });
   if (!c) return;
   clienteEditandoId = id;
-  document.getElementById('cliNombre').value    = c.nombre    || '';
-  document.getElementById('cliTelefono').value  = c.telefono  || '';
-  document.getElementById('cliCorreo').value    = c.correo    || '';
-  document.getElementById('cliDireccion').value = c.direccion || '';
+  document.getElementById('cliNombre').value      = c.nombre      || '';
+  document.getElementById('cliTelefono').value    = c.telefono    || '';
+  document.getElementById('cliCorreo').value      = c.correo      || '';
+  document.getElementById('cliDireccion').value   = c.direccion   || '';
+  document.getElementById('cliContrasena').value  = c.contrasena  || '';
+  document.getElementById('cliClave').value       = c.clave       || '';
 
   cliMapLat = c.lat ? parseFloat(c.lat) : null;
   cliMapLng = c.lng ? parseFloat(c.lng) : null;
@@ -857,13 +1091,15 @@ function cerrarModalCliente() {
 async function guardarCliente() {
   if (!clienteEditandoId) return;
   var body = {
-    id:        clienteEditandoId,
-    nombre:    document.getElementById('cliNombre').value.trim(),
-    telefono:  document.getElementById('cliTelefono').value.trim(),
-    correo:    document.getElementById('cliCorreo').value.trim(),
-    direccion: document.getElementById('cliDireccion').value.trim(),
-    lat:       cliMapLat,
-    lng:       cliMapLng,
+    id:          clienteEditandoId,
+    nombre:      document.getElementById('cliNombre').value.trim(),
+    telefono:    document.getElementById('cliTelefono').value.trim(),
+    correo:      document.getElementById('cliCorreo').value.trim(),
+    direccion:   document.getElementById('cliDireccion').value.trim(),
+    contrasena:  document.getElementById('cliContrasena').value.trim(),
+    clave:       document.getElementById('cliClave').value.trim(),
+    lat:         cliMapLat,
+    lng:         cliMapLng,
   };
   if (!body.nombre) { showToast('El nombre es obligatorio', true); return; }
   try {
@@ -871,7 +1107,7 @@ async function guardarCliente() {
     var data = await res.json();
     if (data.ok) {
       var c = clientes.find(function(x) { return x.id === clienteEditandoId; });
-      if (c) { c.nombre = body.nombre; c.telefono = body.telefono; c.correo = body.correo; c.direccion = body.direccion; c.lat = body.lat; c.lng = body.lng; }
+      if (c) { c.nombre = body.nombre; c.telefono = body.telefono; c.correo = body.correo; c.direccion = body.direccion; c.contrasena = body.contrasena; c.clave = body.clave; c.lat = body.lat; c.lng = body.lng; }
       cerrarModalCliente();
       renderClientes();
       showToast('Cliente actualizado');
@@ -940,11 +1176,11 @@ function renderProveedores() {
     lista.innerHTML = '<div class="table-empty">No hay proveedores registrados</div>';
     return;
   }
-  lista.innerHTML = '<table class="table"><thead><tr>' +
+  lista.innerHTML = '<div class="table-card"><table class="table"><thead><tr>' +
     '<th>Nombre</th><th>Domicilio</th><th>Correo</th><th>Ubicación</th><th></th>' +
     '</tr></thead><tbody>' +
     proveedores.map(function(p) { return renderFilaProveedor(p); }).join('') +
-    '</tbody></table>';
+    '</tbody></table></div>';
 }
 
 function renderFilaProveedor(p) {
@@ -959,10 +1195,40 @@ function renderFilaProveedor(p) {
     '<td>' + correo + '</td>' +
     '<td>' + mapa + '</td>' +
     '<td><div class="actions">' +
+      '<button class="btn-icon-sm" title="Ver detalle" onclick="abrirDetalleProveedor(' + p.id + ')">🔍</button>' +
       '<button class="btn-icon-sm" title="Editar" onclick="abrirEditarProveedor(' + p.id + ')">✏️</button>' +
       '<button class="btn-icon-sm" title="Eliminar" onclick="eliminarProveedor(' + p.id + ',\'' + esc(p.nombre).replace(/'/g, "\\'") + '\')">🗑️</button>' +
     '</div></td>' +
     '</tr>';
+}
+
+/* ===== Modal detalle proveedor ===== */
+function abrirDetalleProveedor(id) {
+  var p = proveedores.find(function(x) { return x.id === id; });
+  if (!p) return;
+
+  document.getElementById('provDetNombre').textContent   = p.nombre || '—';
+  document.getElementById('provDetDomicilio').textContent = p.domicilio || '—';
+  document.getElementById('provDetCorreo').textContent   = p.correo || '—';
+
+  var ubiEl = document.getElementById('provDetUbicacion');
+  if (p.lat && p.lng) {
+    ubiEl.innerHTML = '<a href="https://www.google.com/maps?q=' + p.lat + ',' + p.lng + '" target="_blank" rel="noopener" style="color:var(--primary);font-weight:600">📍 Ver en Google Maps</a>'
+      + ' <span style="color:var(--text-secondary);font-size:.8rem">(' + parseFloat(p.lat).toFixed(6) + ', ' + parseFloat(p.lng).toFixed(6) + ')</span>';
+  } else {
+    ubiEl.innerHTML = '<span style="color:var(--text-secondary)">Sin ubicación registrada</span>';
+  }
+
+  document.getElementById('btnProvDetEditar').onclick = function() {
+    cerrarDetalleProveedor();
+    abrirEditarProveedor(id);
+  };
+
+  document.getElementById('provDetBackdrop').classList.add('open');
+}
+
+function cerrarDetalleProveedor() {
+  document.getElementById('provDetBackdrop').classList.remove('open');
 }
 
 function abrirNuevoProveedor() {
@@ -1550,6 +1816,114 @@ function aceptarUbicacion() {
   }
 }
 
+/* ===== Modal Nuevo Mensaje ===== */
+function abrirNuevoMensaje() {
+  // Poblar selector de clientes
+  const sel = document.getElementById('msgClienteSelect');
+  sel.innerHTML = '<option value="">— Completar manualmente —</option>';
+  (clientes || []).forEach(c => {
+    const opt = document.createElement('option');
+    opt.value = c.id;
+    opt.dataset.nombre = c.nombre || '';
+    opt.dataset.correo = c.correo || '';
+    opt.dataset.telefono = c.telefono || '';
+    opt.textContent = c.nombre + (c.telefono ? ' · ' + c.telefono : '');
+    sel.appendChild(opt);
+  });
+
+  // Reset form
+  document.querySelector('input[name="msgCanal"][value="email"]').checked = true;
+  onMsgCanalChange('email');
+  document.getElementById('msgClienteSelect').value = '';
+  document.getElementById('msgDestinatario').value = '';
+  document.getElementById('msgDestino').value = '';
+  document.getElementById('msgAsunto').value = '';
+  document.getElementById('msgCuerpo').value = '';
+  document.getElementById('btnEnviarMensaje').disabled = false;
+  document.getElementById('btnEnviarMensaje').textContent = 'Enviar mensaje';
+
+  document.getElementById('msgModalBackdrop').classList.add('open');
+}
+
+function cerrarMsgModal() {
+  document.getElementById('msgModalBackdrop').classList.remove('open');
+}
+
+function onMsgCanalChange(canal) {
+  const asuntoGroup = document.getElementById('msgAsuntoGroup');
+  const destinoLabel = document.getElementById('msgDestinoLabel');
+  const destinoInput = document.getElementById('msgDestino');
+  if (canal === 'email') {
+    asuntoGroup.style.display = '';
+    destinoLabel.textContent = 'Email del destinatario *';
+    destinoInput.placeholder = 'email@ejemplo.com';
+    destinoInput.type = 'email';
+  } else {
+    asuntoGroup.style.display = 'none';
+    destinoLabel.textContent = 'Teléfono del destinatario *';
+    destinoInput.placeholder = 'Ej: 5491112345678';
+    destinoInput.type = 'tel';
+  }
+  // Re-fill from selected client
+  const sel = document.getElementById('msgClienteSelect');
+  if (sel.value) onMsgClienteChange(sel.value);
+}
+
+function onMsgClienteChange(clienteId) {
+  if (!clienteId) return;
+  const sel = document.getElementById('msgClienteSelect');
+  const opt = sel.querySelector('option[value="' + clienteId + '"]');
+  if (!opt) return;
+  const canal = document.querySelector('input[name="msgCanal"]:checked').value;
+  document.getElementById('msgDestinatario').value = opt.dataset.nombre || '';
+  document.getElementById('msgDestino').value = canal === 'email'
+    ? (opt.dataset.correo || '')
+    : (opt.dataset.telefono || '');
+}
+
+async function enviarMensaje() {
+  const canal       = document.querySelector('input[name="msgCanal"]:checked').value;
+  const destinatario = document.getElementById('msgDestinatario').value.trim();
+  const destino     = document.getElementById('msgDestino').value.trim();
+  const asunto      = document.getElementById('msgAsunto').value.trim();
+  const cuerpo      = document.getElementById('msgCuerpo').value.trim();
+
+  if (!destinatario || !destino || !cuerpo) {
+    showToast('Completá los campos obligatorios');
+    return;
+  }
+  if (canal === 'email' && !asunto) {
+    showToast('El asunto es obligatorio para correo');
+    return;
+  }
+
+  const btn = document.getElementById('btnEnviarMensaje');
+  btn.disabled = true;
+  btn.textContent = 'Enviando...';
+
+  try {
+    const res  = await fetch('api/enviar_mensaje.php', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ canal, destinatario, destino, asunto, cuerpo }),
+    });
+    const data = await res.json();
+    if (data.ok) {
+      cerrarMsgModal();
+      showToast('Mensaje enviado correctamente');
+      cargarMensajes();
+    } else {
+      showToast('Error: ' + (data.error || 'No se pudo enviar'));
+      btn.disabled = false;
+      btn.textContent = 'Enviar mensaje';
+    }
+  } catch {
+    showToast('Sin conexión al servidor');
+    btn.disabled = false;
+    btn.textContent = 'Enviar mensaje';
+  }
+}
+
 /* ===== Init ===== */
 document.addEventListener('DOMContentLoaded', async () => {
   await cargarCategorias();
@@ -1560,6 +1934,6 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // cerrar modal con Escape
   document.addEventListener('keydown', e => {
-    if (e.key === 'Escape') { cerrarModal(); catModal.cerrar(); cerrarPedModal(); cerrarMapaSelector(); cerrarConfirm(false); }
+    if (e.key === 'Escape') { cerrarModal(); catModal.cerrar(); cerrarPedModal(); cerrarMapaSelector(); cerrarConfirm(false); cerrarMsgModal(); cerrarDetalleMensaje(); cerrarDetalleCliente(); cerrarDetalleProducto(); cerrarDetalleProveedor(); cerrarDetalleEvento(); }
   });
 });

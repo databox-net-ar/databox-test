@@ -9,10 +9,11 @@
 </head>
 <body>
 
+<div id="sidebarOverlay" class="sidebar-overlay" onclick="closeSidebar()"></div>
 <div class="layout">
 
   <!-- ===== Sidebar ===== -->
-  <aside class="sidebar">
+  <aside class="sidebar" id="mainSidebar">
     <div class="sidebar-logo">
       🛒 Lider Admin
     </div>
@@ -35,6 +36,9 @@
       <a class="nav-item" href="#" onclick="cambiarSeccion('proveedores', this)" data-section="proveedores">
         <span class="nav-icon">🏭</span> Proveedores
       </a>
+      <a class="nav-item" href="#" onclick="cambiarSeccion('mensajes', this)" data-section="mensajes">
+        <span class="nav-icon">💬</span> Mensajes
+      </a>
       <a class="nav-item" href="#" onclick="cambiarSeccion('eventos', this)" data-section="eventos">
         <span class="nav-icon">📝</span> Eventos
       </a>
@@ -49,6 +53,7 @@
 
     <!-- Topbar -->
     <div class="topbar">
+      <button class="hamburger" id="menuToggle" onclick="toggleSidebar()" aria-label="Menú">&#9776;</button>
       <div class="topbar-title">Gestión de Productos</div>
       <div class="topbar-meta" id="topbarMeta"></div>
     </div>
@@ -360,6 +365,63 @@
 
       </div><!-- /seccionCompras -->
 
+      <!-- ========== SECCIÓN MENSAJES ========== -->
+      <div class="section" id="seccionMensajes" style="display:none">
+
+        <!-- Stats mensajes -->
+        <div class="stats-bar">
+          <div class="stat-card">
+            <span class="stat-label">Total mensajes</span>
+            <span class="stat-value orange" id="msgStatTotal">—</span>
+          </div>
+          <div class="stat-card">
+            <span class="stat-label">Correo</span>
+            <span class="stat-value" style="color:#3b82f6" id="msgStatEmail">—</span>
+          </div>
+          <div class="stat-card">
+            <span class="stat-label">WhatsApp</span>
+            <span class="stat-value green" id="msgStatWhatsapp">—</span>
+          </div>
+        </div>
+
+        <!-- Toolbar mensajes -->
+        <div class="toolbar">
+          <div class="toolbar-left">
+            <input class="search-input" type="text" placeholder="🔍 Buscar mensaje, destinatario..." oninput="onSearchMensaje(this.value)">
+            <select id="filterCanal" onchange="onFiltroCanal(this.value)">
+              <option value="todos">Todos los canales</option>
+              <option value="email">📧 Correo</option>
+              <option value="whatsapp">💬 WhatsApp</option>
+            </select>
+          </div>
+          <div class="toolbar-right">
+            <button class="btn btn-primary" onclick="abrirNuevoMensaje()">✉️ Nuevo mensaje</button>
+            <button class="btn btn-ghost" onclick="cargarMensajes()">🔄 Actualizar</button>
+          </div>
+        </div>
+
+        <!-- Tabla mensajes -->
+        <div class="table-card">
+          <table>
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Fecha y hora</th>
+                <th>Canal</th>
+                <th>Destinatario</th>
+                <th>Asunto / Mensaje</th>
+                <th>Estado</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="mensajesBody">
+              <tr class="spinner-row"><td colspan="7"><div class="spin"></div></td></tr>
+            </tbody>
+          </table>
+        </div>
+
+      </div><!-- /seccionMensajes -->
+
       <!-- ========== SECCIÓN EVENTOS ========== -->
       <div class="section" id="seccionEventos" style="display:none">
 
@@ -394,10 +456,11 @@
                 <th>Fecha y hora</th>
                 <th>Cliente</th>
                 <th>Detalle</th>
+                <th></th>
               </tr>
             </thead>
             <tbody id="eventosBody">
-              <tr class="spinner-row"><td colspan="4"><div class="spin"></div></td></tr>
+              <tr class="spinner-row"><td colspan="5"><div class="spin"></div></td></tr>
             </tbody>
           </table>
         </div>
@@ -407,6 +470,59 @@
     </div><!-- /content -->
   </div><!-- /main -->
 </div><!-- /layout -->
+
+<!-- ===== Modal Detalle Producto ===== -->
+<div class="modal-backdrop" id="prodDetBackdrop" onclick="if(event.target===this)cerrarDetalleProducto()">
+  <div class="modal" style="max-width:420px">
+    <div class="modal-header">
+      <div class="modal-title" id="prodDetNombre"></div>
+      <button class="btn btn-ghost" onclick="cerrarDetalleProducto()">✕</button>
+    </div>
+    <div class="modal-body" style="display:flex;flex-direction:column;gap:16px">
+
+      <div style="text-align:center">
+        <img id="prodDetImg" src="" alt="" style="max-width:160px;max-height:160px;border-radius:12px;object-fit:cover">
+      </div>
+
+      <div class="ped-detail-section">
+        <div class="ped-detail-label">Categoría</div>
+        <div id="prodDetCategoria" style="font-weight:600"></div>
+      </div>
+
+      <div class="ped-detail-section">
+        <div class="ped-detail-label">Precio / Unidad</div>
+        <div id="prodDetPrecio" style="font-weight:700;font-size:1.1rem;color:var(--primary)"></div>
+      </div>
+
+      <div class="ped-detail-section">
+        <div class="ped-detail-label">Stock</div>
+        <div class="stats-bar" style="margin:6px 0 0">
+          <div class="stat-card">
+            <span class="stat-label">Actual</span>
+            <span class="stat-value green" id="prodDetStockActual">—</span>
+          </div>
+          <div class="stat-card">
+            <span class="stat-label">Comprometido</span>
+            <span class="stat-value" style="color:var(--warn)" id="prodDetStockComprometido">—</span>
+          </div>
+          <div class="stat-card">
+            <span class="stat-label">Mínimo</span>
+            <span class="stat-value" id="prodDetStockMinimo">—</span>
+          </div>
+          <div class="stat-card">
+            <span class="stat-label">Recomendado</span>
+            <span class="stat-value" id="prodDetStockRecomendado">—</span>
+          </div>
+        </div>
+      </div>
+
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="cerrarDetalleProducto()">Cerrar</button>
+      <button class="btn btn-primary" id="btnProdDetEditar">✏️ Editar</button>
+    </div>
+  </div>
+</div>
 
 <!-- ===== Modal Producto ===== -->
 <div class="modal-backdrop" id="modalBackdrop" onclick="if(event.target===this)cerrarModal()">
@@ -614,6 +730,72 @@
   </div>
 </div>
 
+<!-- ===== Modal Detalle Cliente ===== -->
+<div class="modal-backdrop" id="cliDetBackdrop" onclick="if(event.target===this)cerrarDetalleCliente()">
+  <div class="modal" style="max-width:480px">
+    <div class="modal-header">
+      <div class="modal-title" id="cliDetNombre"></div>
+      <button class="btn btn-ghost" onclick="cerrarDetalleCliente()">✕</button>
+    </div>
+    <div class="modal-body" style="display:flex;flex-direction:column;gap:14px">
+
+      <div class="ped-detail-section">
+        <div class="ped-detail-label">Teléfono</div>
+        <div id="cliDetTelefono" style="font-weight:600"></div>
+      </div>
+
+      <div class="ped-detail-section">
+        <div class="ped-detail-label">Correo electrónico</div>
+        <div id="cliDetCorreo" style="font-weight:600"></div>
+      </div>
+
+      <div class="ped-detail-section">
+        <div class="ped-detail-label">Dirección</div>
+        <div id="cliDetDireccion"></div>
+      </div>
+
+      <div class="ped-detail-section">
+        <div class="ped-detail-label">Ubicación GPS</div>
+        <div id="cliDetUbicacion"></div>
+      </div>
+
+      <div class="ped-detail-section">
+        <div class="ped-detail-label">Seguridad</div>
+        <div style="display:flex;gap:24px;flex-wrap:wrap">
+          <div>
+            <div style="font-size:.75rem;color:var(--text-secondary);margin-bottom:2px">Contraseña</div>
+            <div id="cliDetContrasena" style="font-weight:600;font-family:monospace"></div>
+          </div>
+          <div>
+            <div style="font-size:.75rem;color:var(--text-secondary);margin-bottom:2px">Clave</div>
+            <div id="cliDetClave" style="font-weight:600;font-family:monospace"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="stats-bar" style="margin:0">
+        <div class="stat-card">
+          <span class="stat-label">Pedidos</span>
+          <span class="stat-value orange" id="cliDetPedidos">—</span>
+        </div>
+        <div class="stat-card">
+          <span class="stat-label">Total gastado</span>
+          <span class="stat-value green" id="cliDetGastado">—</span>
+        </div>
+        <div class="stat-card">
+          <span class="stat-label">Último pedido</span>
+          <span class="stat-value" id="cliDetUltimo">—</span>
+        </div>
+      </div>
+
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="cerrarDetalleCliente()">Cerrar</button>
+      <button class="btn btn-primary" id="btnCliDetEditar">✏️ Editar</button>
+    </div>
+  </div>
+</div>
+
 <!-- ===== Modal Editar Cliente ===== -->
 <div class="modal-backdrop" id="cliModalBackdrop" onclick="if(event.target===this)cerrarModalCliente()">
   <div class="modal" style="max-width:480px">
@@ -645,10 +827,52 @@
         <div id="cliMapInfo" class="config-hint" style="margin-bottom:8px">Sin ubicación seleccionada.</div>
         <button type="button" class="btn btn-ghost" onclick="abrirMapaSelector('cliente')">🗺️ Seleccionar en el mapa</button>
       </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Contraseña</label>
+          <input type="text" id="cliContrasena" placeholder="Contraseña de acceso" autocomplete="off">
+        </div>
+        <div class="form-group">
+          <label>Clave</label>
+          <input type="text" id="cliClave" placeholder="Clave secundaria" autocomplete="off">
+        </div>
+      </div>
     </div>
     <div class="modal-footer">
       <button class="btn btn-ghost" onclick="cerrarModalCliente()">Cancelar</button>
       <button class="btn btn-primary" onclick="guardarCliente()">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== Modal Detalle Proveedor ===== -->
+<div class="modal-backdrop" id="provDetBackdrop" onclick="if(event.target===this)cerrarDetalleProveedor()">
+  <div class="modal" style="max-width:440px">
+    <div class="modal-header">
+      <div class="modal-title" id="provDetNombre"></div>
+      <button class="btn btn-ghost" onclick="cerrarDetalleProveedor()">✕</button>
+    </div>
+    <div class="modal-body" style="display:flex;flex-direction:column;gap:14px">
+
+      <div class="ped-detail-section">
+        <div class="ped-detail-label">Domicilio</div>
+        <div id="provDetDomicilio"></div>
+      </div>
+
+      <div class="ped-detail-section">
+        <div class="ped-detail-label">Correo electrónico</div>
+        <div id="provDetCorreo" style="font-weight:600"></div>
+      </div>
+
+      <div class="ped-detail-section">
+        <div class="ped-detail-label">Ubicación GPS</div>
+        <div id="provDetUbicacion"></div>
+      </div>
+
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="cerrarDetalleProveedor()">Cerrar</button>
+      <button class="btn btn-primary" id="btnProvDetEditar">✏️ Editar</button>
     </div>
   </div>
 </div>
@@ -757,6 +981,143 @@
     <div class="modal-footer">
       <button class="btn btn-danger" onclick="eliminarCompra()" style="margin-right:auto">🗑️ Eliminar</button>
       <button class="btn btn-ghost" onclick="cerrarCompDetModal()">Cerrar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== Modal Detalle Mensaje ===== -->
+<div class="modal-backdrop" id="msgDetBackdrop" onclick="if(event.target===this)cerrarDetalleMensaje()">
+  <div class="modal" style="max-width:520px">
+    <div class="modal-header">
+      <div>
+        <div class="modal-title" id="msgDetId">#—</div>
+        <div style="font-size:.78rem;color:var(--text-secondary)" id="msgDetFecha"></div>
+      </div>
+      <button class="btn btn-ghost" onclick="cerrarDetalleMensaje()">✕</button>
+    </div>
+    <div class="modal-body" style="display:flex;flex-direction:column;gap:14px">
+
+      <div class="ped-detail-section">
+        <div class="ped-detail-label">Canal</div>
+        <div id="msgDetCanal"></div>
+      </div>
+
+      <div class="ped-detail-section">
+        <div class="ped-detail-label">Destinatario</div>
+        <div id="msgDetDestinatario" style="font-weight:600"></div>
+        <div id="msgDetDestino" style="font-size:.85rem;color:var(--text-secondary)"></div>
+      </div>
+
+      <div class="ped-detail-section" id="msgDetAsuntoRow">
+        <div class="ped-detail-label">Asunto</div>
+        <div id="msgDetAsunto" style="font-weight:600"></div>
+      </div>
+
+      <div class="ped-detail-section">
+        <div class="ped-detail-label">Mensaje</div>
+        <div id="msgDetCuerpo" style="white-space:pre-wrap;line-height:1.6;font-size:.92rem"></div>
+      </div>
+
+      <div class="ped-detail-section">
+        <div class="ped-detail-label">Estado</div>
+        <div id="msgDetEstado"></div>
+      </div>
+
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="cerrarDetalleMensaje()">Cerrar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== Modal Nuevo Mensaje ===== -->
+<div class="modal-backdrop" id="msgModalBackdrop" onclick="if(event.target===this)cerrarMsgModal()">
+  <div class="modal" style="max-width:560px">
+    <div class="modal-header">
+      <div class="modal-title">Nuevo mensaje</div>
+      <button class="btn btn-ghost" onclick="cerrarMsgModal()">✕</button>
+    </div>
+    <div class="modal-body">
+
+      <!-- Canal -->
+      <div class="form-group">
+        <label>Canal *</label>
+        <div style="display:flex;gap:12px;margin-top:4px">
+          <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-weight:500">
+            <input type="radio" name="msgCanal" value="email" onchange="onMsgCanalChange(this.value)" checked>
+            📧 Correo electrónico
+          </label>
+          <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-weight:500">
+            <input type="radio" name="msgCanal" value="whatsapp" onchange="onMsgCanalChange(this.value)">
+            💬 WhatsApp
+          </label>
+        </div>
+      </div>
+
+      <!-- Cliente (selector rápido) -->
+      <div class="form-group">
+        <label>Cliente (opcional)</label>
+        <select id="msgClienteSelect" onchange="onMsgClienteChange(this.value)">
+          <option value="">— Completar manualmente —</option>
+        </select>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label>Nombre del destinatario *</label>
+          <input type="text" id="msgDestinatario" placeholder="Ej: María González">
+        </div>
+        <div class="form-group">
+          <label id="msgDestinoLabel">Email del destinatario *</label>
+          <input type="text" id="msgDestino" placeholder="email@ejemplo.com">
+        </div>
+      </div>
+
+      <!-- Asunto (solo email) -->
+      <div class="form-group" id="msgAsuntoGroup">
+        <label>Asunto *</label>
+        <input type="text" id="msgAsunto" placeholder="Asunto del correo">
+      </div>
+
+      <!-- Mensaje -->
+      <div class="form-group">
+        <label>Mensaje *</label>
+        <textarea id="msgCuerpo" rows="5" placeholder="Escribí el mensaje aquí..." style="resize:vertical;min-height:100px"></textarea>
+      </div>
+
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="cerrarMsgModal()">Cancelar</button>
+      <button class="btn btn-primary" id="btnEnviarMensaje" onclick="enviarMensaje()">Enviar mensaje</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== Modal Detalle Evento ===== -->
+<div class="modal-backdrop" id="evtDetBackdrop" onclick="if(event.target===this)cerrarDetalleEvento()">
+  <div class="modal" style="max-width:440px">
+    <div class="modal-header">
+      <div>
+        <div class="modal-title" id="evtDetId"></div>
+        <div style="font-size:.78rem;color:var(--text-secondary)" id="evtDetFecha"></div>
+      </div>
+      <button class="btn btn-ghost" onclick="cerrarDetalleEvento()">✕</button>
+    </div>
+    <div class="modal-body" style="display:flex;flex-direction:column;gap:14px">
+
+      <div class="ped-detail-section">
+        <div class="ped-detail-label">Cliente</div>
+        <div id="evtDetCliente" style="font-weight:600"></div>
+      </div>
+
+      <div class="ped-detail-section">
+        <div class="ped-detail-label">Detalle</div>
+        <div id="evtDetDetalle" style="white-space:pre-wrap;line-height:1.6"></div>
+      </div>
+
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="cerrarDetalleEvento()">Cerrar</button>
     </div>
   </div>
 </div>

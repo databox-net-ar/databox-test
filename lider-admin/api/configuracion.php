@@ -48,10 +48,17 @@ $pdo->exec("
 
 // Valores por defecto
 $defaults = [
-    'pedido_minimo' => '0',
-    'centro_dist_lat' => '',
-    'centro_dist_lng' => '',
-    'precio_km' => '0',
+    'pedido_minimo'        => '0',
+    'centro_dist_lat'      => '',
+    'centro_dist_lng'      => '',
+    'precio_km'            => '0',
+    'datarocket_url'       => 'https://api.databox.net.ar',
+    'datarocket_apikey'    => 'z9SACoW1SiHGiyan6JVMwudC73r7Y0An',
+    'datarocket_proyecto'  => 'vigicom',
+    'datarocket_canal_email' => 'databox',
+    'datarocket_canal_wa'  => 'repo-hum',
+    'datarocket_remitente' => 'Lider Online',
+    'datarocket_remite'    => '1169391123',
 ];
 foreach ($defaults as $clave => $valorDef) {
     $stmt = $pdo->prepare("INSERT IGNORE INTO configuracion (clave, valor) VALUES (?, ?)");
