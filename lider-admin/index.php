@@ -45,6 +45,9 @@
       <a class="nav-item" href="#" onclick="cambiarSeccion('eventos', this)" data-section="eventos">
         <span class="nav-icon">📝</span> Eventos
       </a>
+      <a class="nav-item" href="#" onclick="cambiarSeccion('usuarios', this)" data-section="usuarios">
+        <span class="nav-icon">👤</span> Usuarios
+      </a>
       <a class="nav-item" href="#" onclick="cambiarSeccion('config', this)" data-section="config">
         <span class="nav-icon">⚙️</span> Configuración
       </a>
@@ -524,6 +527,32 @@
         </div>
 
       </div><!-- /seccionEventos -->
+
+      <!-- ========== SECCIÓN USUARIOS ========== -->
+      <div class="section" id="seccionUsuarios" style="display:none">
+
+        <div class="stats-bar">
+          <div class="stat-card">
+            <span class="stat-label">Total usuarios</span>
+            <span class="stat-value orange" id="usrStatTotal">—</span>
+          </div>
+        </div>
+
+        <div class="toolbar">
+          <div class="toolbar-left">
+            <input class="search-input" type="text" placeholder="🔍 Buscar usuario..." oninput="onSearchUsuario(this.value)">
+          </div>
+          <div class="toolbar-right">
+            <button class="btn btn-primary" onclick="abrirNuevoUsuario()">+ Nuevo usuario</button>
+            <button class="btn btn-ghost" onclick="cargarUsuarios()">🔄 Actualizar</button>
+          </div>
+        </div>
+
+        <div id="usuariosLista">
+          <div class="spinner-row" style="text-align:center;padding:40px"><div class="spin"></div></div>
+        </div>
+
+      </div><!-- /seccionUsuarios -->
 
     </div><!-- /content -->
   </div><!-- /main -->
@@ -1176,6 +1205,40 @@
     </div>
     <div class="modal-footer">
       <button class="btn btn-ghost" onclick="cerrarDetalleEvento()">Cerrar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== Modal Usuario ===== -->
+<div class="modal-backdrop" id="usrModalBackdrop" onclick="if(event.target===this)cerrarModalUsuario()">
+  <div class="modal" style="max-width:460px">
+    <div class="modal-header">
+      <div class="modal-title" id="usrModalTitulo">Nuevo usuario</div>
+      <button class="btn btn-ghost" onclick="cerrarModalUsuario()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-row">
+        <div class="form-group">
+          <label>Usuario *</label>
+          <input type="text" id="usrUsuario" placeholder="Nombre de usuario" autocomplete="off">
+        </div>
+        <div class="form-group">
+          <label>Celular</label>
+          <input type="tel" id="usrCelular" placeholder="Ej: 11 2345-6789">
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Correo electrónico</label>
+        <input type="email" id="usrCorreo" placeholder="correo@ejemplo.com">
+      </div>
+      <div class="form-group">
+        <label>Contraseña</label>
+        <input type="text" id="usrContrasena" placeholder="Contraseña de acceso" autocomplete="off">
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="cerrarModalUsuario()">Cancelar</button>
+      <button class="btn btn-primary" onclick="guardarUsuario()">Guardar</button>
     </div>
   </div>
 </div>

@@ -439,7 +439,139 @@ function cambiarSeccion(seccion, navEl) {
     document.getElementById('seccionEventos').style.display = '';
     topbar.textContent = 'Registros de Eventos';
     cargarEventos();
+  } else if (seccion === 'usuarios') {
+    document.getElementById('seccionUsuarios').style.display = '';
+    topbar.textContent = 'Usuarios del sistema';
+    cargarUsuarios();
   }
+}
+
+/* ===== Usuarios ===== */
+const USR_API = 'api/usuarios.php';
+let usuarios = [];
+let usrBusqueda = '';
+let usrEditandoId = null;
+let usrSearchTimer = null;
+
+function onSearchUsuario(val) {
+  clearTimeout(usrSearchTimer);
+  usrSearchTimer = setTimeout(function() { usrBusqueda = val.trim(); cargarUsuarios(); }, 300);
+}
+
+async function cargarUsuarios() {
+  const lista = document.getElementById('usuariosLista');
+  lista.innerHTML = '<div class="spinner-row" style="text-align:center;padding:40px"><div class="spin"></div></div>';
+  try {
+    const url = USR_API + (usrBusqueda ? '?q=' + encodeURIComponent(usrBusqueda) : '');
+    const res  = await fetch(url);
+    const data = await res.json();
+    if (data.ok) {
+      usuarios = data.data || [];
+      renderUsuarios();
+      document.getElementById('usrStatTotal').textContent = data.stats?.total ?? usuarios.length;
+    } else {
+      lista.innerHTML = '<div class="table-empty">Error al cargar usuarios</div>';
+    }
+  } catch (e) {
+    lista.innerHTML = '<div class="table-empty">Error de conexión</div>';
+  }
+}
+
+function renderUsuarios() {
+  const lista = document.getElementById('usuariosLista');
+  if (!usuarios.length) {
+    lista.innerHTML = '<div class="table-empty">No hay usuarios registrados</div>';
+    return;
+  }
+  lista.innerHTML = '<div class="table-card"><table class="table"><thead><tr>'
+    + '<th>#</th><th>Usuario</th><th>Correo</th><th>Celular</th><th>Contraseña</th><th>Alta</th><th></th>'
+    + '</tr></thead><tbody>'
+    + usuarios.map(function(u) { return renderFilaUsuario(u); }).join('')
+    + '</tbody></table></div>';
+}
+
+function renderFilaUsuario(u) {
+  var fecha = u.created_at ? new Date(u.created_at).toLocaleDateString('es-AR') : '—';
+  return '<tr>'
+    + '<td class="td-id">#' + u.id + '</td>'
+    + '<td><strong>' + esc(u.usuario) + '</strong></td>'
+    + '<td>' + esc(u.correo || '—') + '</td>'
+    + '<td>' + esc(u.celular || '—') + '</td>'
+    + '<td style="font-family:monospace;font-size:.82rem">' + esc(u.contrasena || '—') + '</td>'
+    + '<td>' + fecha + '</td>'
+    + '<td><div class="actions">'
+    + '<button class="btn-icon-sm" title="Editar" onclick="abrirEditarUsuario(' + u.id + ')">✏️</button>'
+    + '<button class="btn-icon-sm btn-danger-sm" title="Eliminar" onclick="confirmarEliminarUsuario(' + u.id + ',\'' + esc(u.usuario) + '\')">🗑️</button>'
+    + '</div></td>'
+    + '</tr>';
+}
+
+function abrirNuevoUsuario() {
+  usrEditandoId = null;
+  document.getElementById('usrModalTitulo').textContent = 'Nuevo usuario';
+  document.getElementById('usrUsuario').value    = '';
+  document.getElementById('usrCorreo').value     = '';
+  document.getElementById('usrCelular').value    = '';
+  document.getElementById('usrContrasena').value = '';
+  document.getElementById('usrModalBackdrop').classList.add('open');
+  document.getElementById('usrUsuario').focus();
+}
+
+function abrirEditarUsuario(id) {
+  var u = usuarios.find(function(x) { return x.id === id; });
+  if (!u) return;
+  usrEditandoId = id;
+  document.getElementById('usrModalTitulo').textContent = 'Editar usuario';
+  document.getElementById('usrUsuario').value    = u.usuario    || '';
+  document.getElementById('usrCorreo').value     = u.correo     || '';
+  document.getElementById('usrCelular').value    = u.celular    || '';
+  document.getElementById('usrContrasena').value = u.contrasena || '';
+  document.getElementById('usrModalBackdrop').classList.add('open');
+  document.getElementById('usrUsuario').focus();
+}
+
+function cerrarModalUsuario() {
+  document.getElementById('usrModalBackdrop').classList.remove('open');
+}
+
+async function guardarUsuario() {
+  var usuario    = document.getElementById('usrUsuario').value.trim();
+  var correo     = document.getElementById('usrCorreo').value.trim();
+  var celular    = document.getElementById('usrCelular').value.trim();
+  var contrasena = document.getElementById('usrContrasena').value.trim();
+
+  if (!usuario) { showToast('El nombre de usuario es requerido'); return; }
+
+  var body   = { usuario, correo, celular, contrasena };
+  var method = usrEditandoId ? 'PUT' : 'POST';
+  if (usrEditandoId) body.id = usrEditandoId;
+
+  try {
+    var res  = await fetch(USR_API, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+    var data = await res.json();
+    if (data.ok) {
+      cerrarModalUsuario();
+      cargarUsuarios();
+      showToast(usrEditandoId ? 'Usuario actualizado' : 'Usuario creado');
+    } else {
+      showToast(data.error || 'Error al guardar', true);
+    }
+  } catch (e) {
+    showToast('Error de conexión', true);
+  }
+}
+
+function confirmarEliminarUsuario(id, nombre) {
+  document.getElementById('confirmMsg').textContent = '¿Eliminar el usuario "' + nombre + '"? Esta acción no se puede deshacer.';
+  abrirConfirm(function(ok) {
+    if (!ok) return;
+    fetch(USR_API + '?id=' + id, { method: 'DELETE' })
+      .then(function(r) { return r.json(); })
+      .then(function(data) {
+        if (data.ok) { cargarUsuarios(); showToast('Usuario eliminado'); }
+        else showToast(data.error || 'Error al eliminar', true);
+      });
+  });
 }
 
 /* ===== Eventos ===== */
@@ -2034,6 +2166,6 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // cerrar modal con Escape
   document.addEventListener('keydown', e => {
-    if (e.key === 'Escape') { cerrarModal(); catModal.cerrar(); cerrarPedModal(); cerrarMapaSelector(); cerrarConfirm(false); cerrarMsgModal(); cerrarDetalleMensaje(); cerrarDetalleCliente(); cerrarDetalleProducto(); cerrarDetalleProveedor(); cerrarDetalleEvento(); }
+    if (e.key === 'Escape') { cerrarModal(); catModal.cerrar(); cerrarPedModal(); cerrarMapaSelector(); cerrarConfirm(false); cerrarMsgModal(); cerrarDetalleMensaje(); cerrarDetalleCliente(); cerrarDetalleProducto(); cerrarDetalleProveedor(); cerrarDetalleEvento(); cerrarModalUsuario(); }
   });
 });
