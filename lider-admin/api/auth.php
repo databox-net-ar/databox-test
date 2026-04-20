@@ -10,7 +10,9 @@
  *   Cierra sesión eliminando la cookie.
  */
 header('Content-Type: application/json');
-header('Access-Control-Allow-Origin: *');
+$_origin = $_SERVER['HTTP_ORIGIN'] ?? '';
+header('Access-Control-Allow-Origin: ' . ($_origin ?: '*'));
+header('Access-Control-Allow-Credentials: true');
 header('Access-Control-Allow-Methods: POST, DELETE, OPTIONS');
 header('Access-Control-Allow-Headers: Content-Type');
 

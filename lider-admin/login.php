@@ -177,9 +177,6 @@ if (authUser()) {
           btn.textContent = 'Ingresar';
           return;
         }
-          console.log('Respuesta login:', data);
-          // Mostrar la respuesta en la interfaz para depuración
-          showError('Respuesta: ' + JSON.stringify(data));
           if (data.ok) {
             // Pausa de 2 segundos para ver el mensaje antes de redirigir
             setTimeout(function() {

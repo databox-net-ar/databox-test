@@ -58,13 +58,7 @@ function setAuthCookie(string $token): void {
     // Forzar secure=false en desarrollo para permitir cookies sin HTTPS
     // Usar path global y sin domain para máxima compatibilidad
     // Para desarrollo local (HTTP): SameSite=Lax y secure=false
-    setcookie('lider_token', $token, [
-        'expires'  => $exp,
-        'path'     => '/',
-        'samesite' => 'Lax',
-        'httponly' => true,
-        'secure'   => false,
-    ]);
+    setcookie('lider_token', $token, $exp, '/');
 }
 
 function clearAuthCookie(): void {
