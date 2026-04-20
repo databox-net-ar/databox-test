@@ -13,6 +13,10 @@ header('Access-Control-Allow-Headers: Content-Type');
 
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') { exit; }
 
+require_once __DIR__ . '/../lib/auth_check.php';
+requireAuth();
+
+
 $configPath = __DIR__ . '/../../config/db.php';
 if (!file_exists($configPath)) {
     http_response_code(500);

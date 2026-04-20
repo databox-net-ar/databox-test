@@ -55,8 +55,11 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
   display: flex; align-items: center; justify-content: space-between;
   box-shadow: var(--shadow);
 }
-.topbar-title { font-size: 1rem; font-weight: 600; }
+.topbar-title { font-size: 1rem; font-weight: 600; flex: 1; }
 .topbar-meta  { font-size: .82rem; color: var(--muted); }
+.topbar-user  { display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
+.topbar-username { font-size: .82rem; color: var(--muted); white-space: nowrap; }
+.btn-sm { padding: 5px 12px; font-size: .8rem; }
 
 /* ===== Content ===== */
 .content { flex: 1; padding: 24px; overflow-y: auto; }

@@ -1,9 +1,13 @@
-<!DOCTYPE html>
+<?php
+require_once __DIR__ . '/lib/auth_check.php';
+requireAuth();
+$authUser = authUser();
+?><!DOCTYPE html>
 <html lang="es">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Lider Admin — Productos</title>
+  <title>Lider Admin</title>
   <link rel="stylesheet" href="assets/css/admin.css?v=<?= time() ?>">
   <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyD5WChZRhfb478oxJr7kUBwufoe-G_5SBg"></script>
 </head>
@@ -62,6 +66,10 @@
       <button class="hamburger" id="menuToggle" onclick="toggleSidebar()" aria-label="Menú">&#9776;</button>
       <div class="topbar-title">Gestión de Productos</div>
       <div class="topbar-meta" id="topbarMeta"></div>
+      <div class="topbar-user">
+        <span class="topbar-username">👤 <?= htmlspecialchars($authUser['usr'] ?? '') ?></span>
+        <button class="btn btn-ghost btn-sm" onclick="cerrarSesionAdmin()">Salir</button>
+      </div>
     </div>
 
     <!-- Content -->

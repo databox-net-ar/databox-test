@@ -22,6 +22,10 @@ header('Access-Control-Allow-Headers: Content-Type');
 
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') { exit; }
 
+require_once __DIR__ . '/../lib/auth_check.php';
+requireAuth();
+
+
 require_once __DIR__ . '/../../config/db.php';
 
 try {

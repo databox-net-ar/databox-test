@@ -1,3 +1,18 @@
+/* ===== Auth: redirigir al login si el token expira ===== */
+(function() {
+  var _fetch = window.fetch;
+  window.fetch = function() {
+    return _fetch.apply(this, arguments).then(function(res) {
+      if (res.status === 401) {
+        res.clone().json().then(function(d) {
+          if (d && d.login) window.location.href = 'login.php';
+        }).catch(function(){});
+      }
+      return res;
+    });
+  };
+})();
+
 /* ===== Config ===== */
 const API = 'api/productos.php';
 const UPLOAD_API = 'api/upload.php';
@@ -379,6 +394,11 @@ function showToast(msg, error = false) {
 }
 
 /* ===== Navegación de secciones ===== */
+async function cerrarSesionAdmin() {
+  await fetch('api/auth.php', { method: 'DELETE' });
+  window.location.href = 'login.php';
+}
+
 function toggleSidebar() {
   document.getElementById('mainSidebar').classList.toggle('open');
   document.getElementById('sidebarOverlay').classList.toggle('active');
