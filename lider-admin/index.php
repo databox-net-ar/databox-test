@@ -18,7 +18,10 @@
       🛒 Lider Admin
     </div>
     <nav class="sidebar-nav">
-      <a class="nav-item active" href="#" onclick="cambiarSeccion('productos', this)" data-section="productos">
+      <a class="nav-item active" href="#" onclick="cambiarSeccion('inicio', this)" data-section="inicio">
+        <span class="nav-icon">🏠</span> Inicio
+      </a>
+      <a class="nav-item" href="#" onclick="cambiarSeccion('productos', this)" data-section="productos">
         <span class="nav-icon">📦</span> Productos
       </a>
       <a class="nav-item" href="#" onclick="cambiarSeccion('categorias', this)" data-section="categorias">
@@ -61,8 +64,63 @@
     <!-- Content -->
     <div class="content">
 
+      <!-- ========== SECCIÓN INICIO (Dashboard) ========== -->
+      <div class="section" id="seccionInicio">
+
+        <div class="stats-bar" id="dashStats">
+          <div class="stat-card dash-link" onclick="irSeccion('productos')"><span class="stat-label">Productos</span><span class="stat-value orange" id="dashProd">—</span></div>
+          <div class="stat-card dash-link" onclick="irSeccion('clientes')"><span class="stat-label">Clientes</span><span class="stat-value green" id="dashCli">—</span></div>
+          <div class="stat-card dash-link" onclick="irSeccion('pedidos')"><span class="stat-label">Pedidos hoy</span><span class="stat-value" style="color:#3b82f6" id="dashPedHoy">—</span></div>
+          <div class="stat-card dash-link" onclick="irSeccion('pedidos')"><span class="stat-label">Pedidos totales</span><span class="stat-value orange" id="dashPedTotal">—</span></div>
+          <div class="stat-card dash-link" onclick="irSeccion('pedidos')"><span class="stat-label">Ventas totales</span><span class="stat-value green" id="dashVentas">—</span></div>
+          <div class="stat-card dash-link" onclick="irSeccion('compras')"><span class="stat-label">Compras totales</span><span class="stat-value red" id="dashCompras">—</span></div>
+          <div class="stat-card dash-link" onclick="irSeccion('mensajes')"><span class="stat-label">Mensajes enviados</span><span class="stat-value" style="color:#8b5cf6" id="dashMensajes">—</span></div>
+          <div class="stat-card dash-link" onclick="irSeccion('proveedores')"><span class="stat-label">Proveedores</span><span class="stat-value" style="color:#64748b" id="dashProv">—</span></div>
+        </div>
+
+        <div class="dash-grid">
+
+          <!-- Últimos pedidos -->
+          <div class="table-card">
+            <div class="dash-table-header dash-link" onclick="irSeccion('pedidos')">📋 Últimos pedidos <span class="dash-ver-mas">Ver todos →</span></div>
+            <table>
+              <thead><tr><th>#</th><th>Cliente</th><th>Total</th><th>Estado</th></tr></thead>
+              <tbody id="dashPedidosBody"><tr><td colspan="4" style="text-align:center;padding:20px"><div class="spin"></div></td></tr></tbody>
+            </table>
+          </div>
+
+          <!-- Últimos clientes -->
+          <div class="table-card">
+            <div class="dash-table-header dash-link" onclick="irSeccion('clientes')">👥 Últimos clientes <span class="dash-ver-mas">Ver todos →</span></div>
+            <table>
+              <thead><tr><th>Nombre</th><th>Teléfono</th><th>Pedidos</th></tr></thead>
+              <tbody id="dashClientesBody"><tr><td colspan="3" style="text-align:center;padding:20px"><div class="spin"></div></td></tr></tbody>
+            </table>
+          </div>
+
+          <!-- Últimos mensajes -->
+          <div class="table-card">
+            <div class="dash-table-header dash-link" onclick="irSeccion('mensajes')">💬 Últimos mensajes <span class="dash-ver-mas">Ver todos →</span></div>
+            <table>
+              <thead><tr><th>Canal</th><th>Destinatario</th><th>Estado</th></tr></thead>
+              <tbody id="dashMensajesBody"><tr><td colspan="3" style="text-align:center;padding:20px"><div class="spin"></div></td></tr></tbody>
+            </table>
+          </div>
+
+          <!-- Stock crítico -->
+          <div class="table-card">
+            <div class="dash-table-header dash-link" onclick="irSeccion('productos')">⚠️ Stock crítico <span class="dash-ver-mas">Ver productos →</span></div>
+            <table>
+              <thead><tr><th>Producto</th><th>Stock</th></tr></thead>
+              <tbody id="dashStockBody"><tr><td colspan="2" style="text-align:center;padding:20px"><div class="spin"></div></td></tr></tbody>
+            </table>
+          </div>
+
+        </div>
+      </div><!-- /seccionInicio -->
+
       <!-- ========== SECCIÓN PRODUCTOS ========== -->
-      <div class="section" id="seccionProductos">
+      <div class="section" id="seccionProductos" style="display:none">
 
       <!-- Stats -->
       <div class="stats-bar">

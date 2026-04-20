@@ -13,6 +13,13 @@ function getCookie(name) {
   var match = document.cookie.match(new RegExp('(^| )' + name + '=([^;]+)'));
   return match ? decodeURIComponent(match[2]) : null;
 }
+function deleteCookie(name) {
+  document.cookie = name + '=;expires=Thu, 01 Jan 1970 00:00:00 UTC;path=/;SameSite=Lax';
+}
+function cerrarSesion() {
+  deleteCookie('cliente_id');
+  location.reload();
+}
 
 /* ===== State ===== */
 let pedidoMinimo = 0;
@@ -118,6 +125,48 @@ async function notificarWhatsApp(pedido, datos) {
   } catch (err) {
     console.error('[WA] error de red:', err);
     showToast('[WA] error de red: ' + err.message);
+  }
+}
+
+async function notificarClienteWA(pedido, datos) {
+  if (!datos.telefono) return;
+
+  const baseUrl = window.location.origin + window.location.pathname.replace(/\/[^/]*$/, '/');
+  const linkSeguimiento = baseUrl + 'seguimiento.php?p=' + encodeURIComponent(pedido.numero);
+
+  const cuerpo = '¡Hola ' + datos.cliente.split(' ')[0] + '! 👋\n\n'
+    + 'Recibimos tu pedido *' + pedido.numero + '* y ya lo estamos procesando. 🛒\n\n'
+    + '📦 Podés ver el estado de tu pedido en:\n'
+    + linkSeguimiento + '\n\n'
+    + '¡Gracias por tu compra!';
+
+  try {
+    const payload = {
+      servicio:     'evolution',
+      proyecto:     'vigicom',
+      canal:        'repo-hum',
+      plantilla:    '',
+      remitente:    'Lider Online',
+      remite:       '1169391123',
+      destinatario: datos.cliente,
+      destino:      datos.telefono,
+      prioridad:    '2',
+      asunto:       'Confirmación pedido ' + pedido.numero,
+      cuerpo:       cuerpo,
+      variables:    '',
+      codificado:   '0',
+      formato:      'T',
+      adjunto:      '',
+      parametros:   '',
+      tags:         'confirmacion',
+    };
+    await fetch('api/notificar_whatsapp.php', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+  } catch (err) {
+    console.error('[WA cliente] error:', err);
   }
 }
 
@@ -404,6 +453,7 @@ async function handleCheckout(e) {
       document.getElementById('confirmNum').textContent = res.pedido.numero;
       document.getElementById('confirmScreen').classList.add('show');
       notificarWhatsApp(res.pedido, datos);
+      notificarClienteWA(res.pedido, datos);
       cart.clear();
     } else {
       console.error('Error pedido:', res);
@@ -615,7 +665,8 @@ function renderPerfil(cli) {
       + filaGps
       + ubicBtn
     + '</div>'
-    + '<button class="perfil-btn-edit btn-checkout" onclick="openPerfilModal()">Editar datos</button>'
+    + '<button class="perfil-btn-edit btn-ver-carrito" onclick="openPerfilModal()">Editar datos</button>'
+    + '<button class="btn-checkout perfil-btn-logout" onclick="cerrarSesion()">Cerrar sesión</button>'
     + '</div>';
 }
 
@@ -877,17 +928,19 @@ function renderDetailActions() {
   }
 
   const stockMax = currentDetailProduct.stock_actual ?? Infinity;
-  const finalizarBtn = `<button class="btn-checkout" onclick="closeProductModal();openCart()">
+  const finalizarBtn = `<button class="btn-checkout btn-ver-carrito" onclick="closeProductModal();openCart()">
     Ver Carrito
   </button>`;
 
   if (qty > 0) {
+    el.style.marginBottom = '';
     el.innerHTML = `<div class="pd-qty-row">
       <button class="pd-qty-btn" onclick="removeFromDetail()">−</button>
       <span class="pd-qty-label">${qty}</span>
       <button class="pd-qty-btn" onclick="addFromDetail()" ${qty >= stockMax ? 'disabled' : ''}>+</button>
     </div>${finalizarBtn}`;
   } else {
+    el.style.marginBottom = '0px';
     el.innerHTML = `<button class="btn-checkout" onclick="addFromDetail()">
       Agregar al carrito
     </button>${shareBtn}`;

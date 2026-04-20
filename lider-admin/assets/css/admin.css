@@ -277,6 +277,21 @@ tbody tr:hover { background: #fafafa; }
 }
 .sidebar-overlay.active { display: block; }
 
+/* ===== Dashboard grid ===== */
+.dash-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top: 4px; }
+@media (max-width: 768px) { .dash-grid { grid-template-columns: 1fr; } }
+
+.dash-link { cursor: pointer; transition: opacity .15s; }
+.dash-link:hover { opacity: .75; }
+.stat-card.dash-link:hover { background: var(--bg); }
+
+.dash-table-header {
+  padding: 14px 20px 10px; font-weight: 600; font-size: .95rem;
+  border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: space-between;
+}
+.dash-ver-mas { font-size: .78rem; font-weight: 500; color: var(--primary); }
+
 /* ===== Responsive ===== */
 @media (max-width: 768px) {
   .hamburger { display: inline-flex; align-items: center; }

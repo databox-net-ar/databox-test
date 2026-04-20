@@ -103,6 +103,7 @@ function renderTabla() {
         </div>
       </td>
     </tr>`).join('');
+  resolverPendingDetail('productos');
 }
 
 function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
@@ -398,9 +399,14 @@ function cambiarSeccion(seccion, navEl) {
 
   const topbar = document.querySelector('.topbar-title');
 
-  if (seccion === 'productos') {
+  if (seccion === 'inicio') {
+    document.getElementById('seccionInicio').style.display = '';
+    topbar.textContent = 'Inicio';
+    cargarDashboard();
+  } else if (seccion === 'productos') {
     document.getElementById('seccionProductos').style.display = '';
     topbar.textContent = 'Gestión de Productos';
+    cargarProductos();
   } else if (seccion === 'categorias') {
     document.getElementById('seccionCategorias').style.display = '';
     topbar.textContent = 'Gestión de Categorías';
@@ -578,6 +584,7 @@ function renderMensajes() {
       + '<td onclick="event.stopPropagation()"><button class="btn-icon-sm" title="Ver detalle" onclick="abrirDetalleMensaje(' + m.id + ')">🔍</button></td>'
       + '</tr>';
   }).join('');
+  resolverPendingDetail('mensajes');
 }
 
 function onSearchMensaje(val) {
@@ -817,7 +824,7 @@ function renderPedidos() {
       itemCount += (p.items[i].cantidad || 1);
     }
     var fecha = p.fecha ? new Date(p.fecha).toLocaleString('es-AR', { day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit' }) : '';
-    return '<div class="ped-card" onclick="abrirPedido(' + p.id + ')">' +
+    return '<div class="ped-card" onclick="abrirPedido(' + p.id + ')" data-id="' + p.id + '">' +
       '<div class="ped-card-head">' +
         '<span class="ped-card-num">' + esc(p.numero) + '</span>' +
         '<span class="ped-card-badge" style="background:' + est.color + '15;color:' + est.color + '">' + est.emoji + ' ' + est.label + '</span>' +
@@ -837,6 +844,7 @@ function renderPedidos() {
       '</div>' +
     '</div>';
   }).join('');
+  resolverPendingDetail('pedidos');
 }
 
 function abrirPedido(id) {
@@ -995,6 +1003,7 @@ function renderClientes() {
     '</tr></thead><tbody>' +
     clientes.map(function(c) { return renderFilaCliente(c); }).join('') +
     '</tbody></table></div>';
+  resolverPendingDetail('clientes');
 }
 
 function renderFilaCliente(c) {
@@ -1924,11 +1933,102 @@ async function enviarMensaje() {
   }
 }
 
+let pendingDetail = null; // { seccion, id }
+
+function irSeccion(seccion) {
+  const navEl = document.querySelector('[data-section="' + seccion + '"]');
+  cambiarSeccion(seccion, navEl);
+}
+
+function irDetalle(seccion, id) {
+  pendingDetail = { seccion, id };
+  irSeccion(seccion);
+}
+
+function resolverPendingDetail(seccion) {
+  if (!pendingDetail || pendingDetail.seccion !== seccion) return;
+  const id = pendingDetail.id;
+  pendingDetail = null;
+  if      (seccion === 'productos')   abrirDetalleProducto(id);
+  else if (seccion === 'pedidos')     abrirPedido(id);
+  else if (seccion === 'clientes')    abrirDetalleCliente(id);
+  else if (seccion === 'mensajes')    abrirDetalleMensaje(id);
+}
+
+/* ===== Dashboard ===== */
+async function cargarDashboard() {
+  const fmt = n => new Intl.NumberFormat('es-AR').format(n);
+  const money = n => '$' + fmt(n);
+
+  try {
+    const [rProd, rCli, rPed, rComp, rMsg] = await Promise.all([
+      fetch('api/productos.php').then(r => r.json()),
+      fetch('api/clientes.php').then(r => r.json()),
+      fetch('api/pedidos.php').then(r => r.json()),
+      fetch('api/compras.php').then(r => r.json()),
+      fetch('api/mensajes.php').then(r => r.json()),
+    ]);
+
+    // Stats cards
+    if (rProd.ok)  document.getElementById('dashProd').textContent     = rProd.stats?.total ?? rProd.data?.length ?? '—';
+    if (rCli.ok)   document.getElementById('dashCli').textContent      = rCli.stats?.total ?? '—';
+    if (rPed.ok) {
+      document.getElementById('dashPedTotal').textContent = rPed.stats?.total ?? '—';
+      document.getElementById('dashPedHoy').textContent   = rPed.stats?.hoy ?? '—';
+      document.getElementById('dashVentas').textContent   = rPed.stats?.monto_total ? money(rPed.stats.monto_total) : '—';
+    }
+    if (rComp.ok)  document.getElementById('dashCompras').textContent  = rComp.stats?.monto_total ? money(rComp.stats.monto_total) : (rComp.stats?.total ?? '—');
+    if (rMsg.ok)   document.getElementById('dashMensajes').textContent = rMsg.stats?.total ?? '—';
+    if (rCli.ok)   document.getElementById('dashProv').textContent     = '—';
+
+    // Proveedores
+    fetch('api/proveedores.php').then(r => r.json()).then(d => {
+      if (d.ok) document.getElementById('dashProv').textContent = d.stats?.total ?? d.data?.length ?? '—';
+    });
+
+    const rowStyle = 'style="cursor:pointer" class="dash-link"';
+
+    // Últimos pedidos
+    const pedBody = document.getElementById('dashPedidosBody');
+    const peds = (rPed.data || []).slice(0, 8);
+    pedBody.innerHTML = peds.length ? peds.map(p => {
+      const estadoClass = p.estado === 'entregado' ? 'badge-green' : p.estado === 'cancelado' ? 'badge-red' : 'badge-warn';
+      return `<tr ${rowStyle} onclick="irDetalle('pedidos',${p.id})"><td><strong>#${p.numero}</strong></td><td>${esc(p.cliente_nombre || '—')}</td><td>${money(p.total)}</td><td><span class="badge ${estadoClass}">${p.estado}</span></td></tr>`;
+    }).join('') : '<tr><td colspan="4" style="text-align:center;color:var(--muted);padding:16px">Sin pedidos</td></tr>';
+
+    // Últimos clientes
+    const cliBody = document.getElementById('dashClientesBody');
+    const clis = (rCli.data || []).slice(0, 8);
+    cliBody.innerHTML = clis.length ? clis.map(c =>
+      `<tr ${rowStyle} onclick="irDetalle('clientes',${c.id})"><td><strong>${esc(c.nombre)}</strong></td><td>${esc(c.telefono || '—')}</td><td>${c.total_pedidos}</td></tr>`
+    ).join('') : '<tr><td colspan="3" style="text-align:center;color:var(--muted);padding:16px">Sin clientes</td></tr>';
+
+    // Últimos mensajes
+    const msgBody = document.getElementById('dashMensajesBody');
+    const msgs = (rMsg.data || []).slice(0, 8);
+    msgBody.innerHTML = msgs.length ? msgs.map(m => {
+      const canal = m.canal === 'email' ? '📧' : '💬';
+      const estadoClass = m.estado === 'enviado' ? 'badge-green' : 'badge-warn';
+      return `<tr ${rowStyle} onclick="irDetalle('mensajes',${m.id})"><td>${canal} ${m.canal}</td><td>${esc(m.destino || m.destinatario)}</td><td><span class="badge ${estadoClass}">${m.estado}</span></td></tr>`;
+    }).join('') : '<tr><td colspan="3" style="text-align:center;color:var(--muted);padding:16px">Sin mensajes</td></tr>';
+
+    // Stock crítico (stock_actual <= 3)
+    const stBody = document.getElementById('dashStockBody');
+    const criticos = (rProd.data || []).filter(p => p.stock && p.stock_actual <= 3).slice(0, 8);
+    stBody.innerHTML = criticos.length ? criticos.map(p =>
+      `<tr ${rowStyle} onclick="irDetalle('productos',${p.id})"><td>${esc(p.nombre)}</td><td><span class="badge ${p.stock_actual === 0 ? 'badge-red' : 'badge-warn'}">${p.stock_actual}</span></td></tr>`
+    ).join('') : '<tr><td colspan="2" style="text-align:center;color:var(--muted);padding:16px">Sin stock crítico</td></tr>';
+
+  } catch(e) {
+    console.error('Dashboard error:', e);
+  }
+}
+
 /* ===== Init ===== */
 document.addEventListener('DOMContentLoaded', async () => {
   await cargarCategorias();
   poblarSelects();
-  cargarProductos();
+  cargarDashboard();
   initDragDrop();
   cargarConfiguracion();
 
