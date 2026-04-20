@@ -122,7 +122,7 @@
       <span class="total-amount">$<span id="cartTotal">0</span></span>
     </div>
     <button class="btn-checkout" onclick="openCheckout()">
-      Hacer pedido
+      Finalizar Pedido
       <img src="https://cdn.jsdelivr.net/npm/openmoji@15.0.0/color/svg/1F4E6.svg" alt="pedido" width="20" height="20">
     </button>
   </div>

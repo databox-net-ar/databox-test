@@ -877,12 +877,16 @@ function renderDetailActions() {
   }
 
   const stockMax = currentDetailProduct.stock_actual ?? Infinity;
+  const finalizarBtn = `<button class="btn-checkout" onclick="closeProductModal();openCart()">
+    Ver Carrito
+  </button>`;
+
   if (qty > 0) {
     el.innerHTML = `<div class="pd-qty-row">
       <button class="pd-qty-btn" onclick="removeFromDetail()">−</button>
       <span class="pd-qty-label">${qty}</span>
       <button class="pd-qty-btn" onclick="addFromDetail()" ${qty >= stockMax ? 'disabled' : ''}>+</button>
-    </div>${shareBtn}`;
+    </div>${finalizarBtn}`;
   } else {
     el.innerHTML = `<button class="btn-checkout" onclick="addFromDetail()">
       Agregar al carrito
